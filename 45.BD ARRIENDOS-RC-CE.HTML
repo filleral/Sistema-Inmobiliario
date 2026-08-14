@@ -1,0 +1,2080 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Inmobiliario - Grupo Empresarial Bienes Raíces White</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Premium -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --brand-navy: #0B132B;
+            --brand-navy-light: #1C2541;
+            --brand-gold: #C5A059;
+            --brand-gold-light: #E6C687;
+            --brand-gold-soft: rgba(197, 160, 89, 0.12);
+            --bg-app: #F4F6F9;
+            --card-bg: #FFFFFF;
+            --border-color: #E2E8F0;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --success-color: #10B981;
+            --warning-color: #F59E0B;
+            --danger-color: #EF4444;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 50px;
+        }
+
+        .navbar-luxury {
+            background: linear-gradient(135deg, #070B19 0%, #0B132B 100%) !important;
+            border-bottom: 1px solid rgba(197, 160, 89, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 12px 24px;
+        }
+
+        .navbar-brand-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #FFFFFF;
+        }
+
+        .company-header {
+            background: linear-gradient(135deg, #0B132B 0%, #1C2541 100%);
+            border-radius: 20px;
+            padding: 30px 36px;
+            margin-top: 24px;
+            margin-bottom: 28px;
+            border: 1px solid rgba(197, 160, 89, 0.25);
+            box-shadow: 0 12px 30px rgba(11, 19, 43, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-box {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            z-index: 1;
+        }
+
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #C5A059 0%, #E6C687 100%);
+            color: #0B132B;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            box-shadow: 0 6px 16px rgba(197, 160, 89, 0.3);
+        }
+
+        .company-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.85rem;
+            font-weight: 700;
+            color: #FFFFFF;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+
+        .company-subtitle {
+            color: #94A3B8;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-pills-luxury {
+            gap: 12px;
+        }
+
+        .nav-pills-luxury .nav-link {
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 12px 24px;
+            color: var(--text-secondary);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            transition: all 0.3s ease;
+        }
+
+        .nav-pills-luxury .nav-link:hover {
+            color: var(--brand-navy);
+            border-color: var(--brand-gold);
+            transform: translateY(-1px);
+        }
+
+        .nav-pills-luxury .nav-link.active {
+            background: linear-gradient(135deg, #0B132B 0%, #1C2541 100%) !important;
+            color: #FFFFFF !important;
+            border-color: var(--brand-gold);
+            box-shadow: 0 8px 20px rgba(11, 19, 43, 0.2);
+        }
+
+        .filter-panel {
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+        }
+
+        .form-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 1px solid #CBD5E1;
+            padding: 9px 14px;
+            font-size: 0.88rem;
+            color: #1E293B;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--brand-gold);
+            box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2);
+        }
+
+        .card-custom {
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.03);
+            background: var(--card-bg);
+            overflow: hidden;
+        }
+
+        .table-custom th {
+            background-color: #F8FAFC;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            white-space: nowrap;
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .table-custom td {
+            font-size: 0.88rem;
+            vertical-align: middle;
+            white-space: nowrap;
+            padding: 15px 18px;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+        }
+
+        .btn-luxury-primary {
+            background: linear-gradient(135deg, #0B132B 0%, #1C2541 100%);
+            color: #FFFFFF;
+            border: 1px solid var(--brand-gold);
+            box-shadow: 0 4px 12px rgba(11, 19, 43, 0.15);
+        }
+
+        .btn-luxury-primary:hover {
+            background: linear-gradient(135deg, #1C2541 0%, #2A365C 100%);
+            color: var(--brand-gold-light);
+            border-color: var(--brand-gold-light);
+        }
+
+        .btn-action {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            margin: 0 2px;
+        }
+
+        .badge-status-active {
+            background-color: #ECFDF5;
+            color: #059669;
+            border: 1px solid #A7F3D0;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+        .badge-status-inactive {
+            background-color: #F1F5F9;
+            color: #64748B;
+            border: 1px solid #E2E8F0;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+        .badge-status-pending {
+            background-color: #FEF3C7;
+            color: #D97706;
+            border: 1px solid #FDE68A;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+        .pagination-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: #FFFFFF;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .autocomplete-suggestions {
+            border: 1px solid var(--border-color);
+            background: #FFFFFF;
+            position: absolute;
+            z-index: 1055;
+            max-height: 220px;
+            overflow-y: auto;
+            width: calc(100% - 24px);
+            border-radius: 0 0 14px 14px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .autocomplete-suggestion {
+            padding: 12px 18px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+        }
+
+        .autocomplete-suggestion:hover {
+            background-color: #F8FAFC;
+            color: var(--brand-navy);
+        }
+
+        .modal-content {
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(197, 160, 89, 0.3);
+        }
+
+        .modal-header-luxury {
+            background: linear-gradient(135deg, #0B132B 0%, #1C2541 100%);
+            border-bottom: 2px solid var(--brand-gold);
+            padding: 20px 28px;
+        }
+
+        .modal-title-luxury {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #FFFFFF;
+        }
+
+        .section-header-modal {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--brand-navy);
+            border-bottom: 1px solid var(--brand-gold-soft);
+            padding-bottom: 6px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Ajustes responsive (móvil): evita que el encabezado y la paginación se desborden */
+        @media (max-width: 768px) {
+            .company-header {
+                flex-wrap: wrap;
+                gap: 16px;
+                padding: 22px 20px;
+            }
+            .pagination-container {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .filter-panel {
+                padding: 18px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navegación -->
+    <nav class="navbar navbar-dark navbar-luxury">
+        <div class="container-fluid px-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span class="navbar-brand-title d-flex align-items-center">
+                <i class="fas fa-crown text-warning me-2" style="color: var(--brand-gold) !important;"></i> Bienes Raíces White
+            </span>
+            <div class="d-flex gap-2 flex-wrap">
+                <!-- Entradas de archivo ocultas usadas por los botones de Respaldo/CSV -->
+                <input type="file" id="inputArchivoRespaldo" accept=".json,application/json" style="display:none;" onchange="manejarArchivoRespaldo(event)">
+                <input type="file" id="inputArchivoCSV" accept=".csv,text/csv" style="display:none;" onchange="manejarArchivoCSV(event)">
+                <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="respaldarTodoJSON()" title="Descarga toda la información del sistema en un archivo .json">
+                    <i class="fas fa-download me-1"></i> Respaldar Todo
+                </button>
+                <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="document.getElementById('inputArchivoRespaldo').click()" title="Carga un archivo .json de respaldo previamente descargado">
+                    <i class="fas fa-upload me-1"></i> Restaurar Respaldo
+                </button>
+                <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="document.getElementById('inputArchivoCSV').click()" title="Importa contratos y recibos iniciales desde un archivo .csv">
+                    <i class="fas fa-file-csv me-1"></i> Importar CSV
+                </button>
+                <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="restaurarDatosOriginales()">
+                    <i class="fas fa-history me-1"></i> Restaurar Datos
+                </button>
+                <button class="btn btn-outline-danger btn-sm text-white rounded-pill px-3" onclick="salirAplicacion()">
+                    <i class="fas fa-sign-out-alt me-1"></i> Salir
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        <div class="company-header">
+            <div class="logo-box">
+                <div class="logo-icon">
+                    <i class="fas fa-building-columns"></i>
+                </div>
+                <div>
+                    <div class="company-title">GRUPO EMPRESARIAL BIENES RAÍCES WHITE</div>
+                    <div class="company-subtitle"><i class="fas fa-shield-halved me-1 text-warning"></i> Sistema de Gestión Integral de Contratos, Recibos y Liquidaciones</div>
+                </div>
+            </div>
+            <div class="z-1">
+                <span class="badge bg-white text-dark border px-3 py-2 fs-6 rounded-pill shadow-sm">
+                    <i class="fas fa-circle-check text-success me-1"></i> Módulo Profesional
+                </span>
+            </div>
+        </div>
+
+        <ul class="nav nav-pills nav-pills-luxury mb-4" id="sistemaTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="contratos-tab" data-bs-toggle="pill" data-bs-target="#contratosContent" type="button" role="tab">
+                    <i class="fas fa-file-contract me-2"></i>Gestión de Contratos
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pagos-tab" data-bs-toggle="pill" data-bs-target="#pagosContent" type="button" role="tab">
+                    <i class="fas fa-receipt me-2"></i>Recibos de Caja y Consignaciones
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="sistemaTabsContent">
+            <!-- PESTAÑA 1: CONTRATOS -->
+            <div class="tab-pane fade show active" id="contratosContent" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0 d-flex align-items-center">
+                        <i class="fas fa-folder-tree me-2" style="color: var(--brand-navy);"></i>Contratos Registrados (<span id="contadorContratos">0</span>)
+                    </h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-success btn-sm" onclick="exportarExcelContratosCompleto()">
+                            <i class="fas fa-file-excel me-1"></i> Exportar CSV
+                        </button>
+                        <button class="btn btn-luxury-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAdicionar" onclick="prepararNuevoContrato()">
+                            <i class="fas fa-plus-circle me-1"></i> Adicionar Contrato
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-panel">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Buscar General:</label>
+                            <input type="text" id="filtroGlobal" class="form-control" placeholder="Arrendatario, Propietario...">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Estado:</label>
+                            <select id="filtroEstado" class="form-select">
+                                <option value="">-- Todos --</option>
+                                <option value="Activo">Activo</option>
+                                <option value="Retirado">Retirado / Inactivo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Día Límite:</label>
+                            <select id="filtroDiaLimite" class="form-select">
+                                <option value="">-- Todos --</option>
+                                <option value="1">Día 1</option><option value="5">Día 5</option><option value="10">Día 10</option>
+                                <option value="15">Día 15</option><option value="20">Día 20</option><option value="25">Día 25</option>
+                                <option value="30">Día 30</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Concepto Fecha:</label>
+                            <select id="conceptoFecha" class="form-select">
+                                <option value="vto" selected>Fecha Vencimiento</option>
+                                <option value="ini">Fecha Inicial</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Rango Fecha:</label>
+                            <div class="input-group">
+                                <input type="date" id="minFecha" class="form-control">
+                                <input type="date" id="maxFecha" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-12 text-end d-flex justify-content-end gap-2">
+                            <button id="btnBuscarContratos" class="btn btn-luxury-primary px-4">
+                                <i class="fas fa-search me-1"></i> Buscar
+                            </button>
+                            <button id="btnLimpiarFiltros" class="btn btn-outline-secondary">
+                                <i class="fas fa-rotate-left me-1"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-custom">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle table-custom w-100 mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Estado</th>
+                                        <th>Arrendatario</th>
+                                        <th>Inmueble / Dirección</th>
+                                        <th>Propietario</th>
+                                        <th>Canon</th>
+                                        <th>Día Límite</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cuerpoTabla"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination-container">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="small text-muted fw-bold">Mostrar por página:</span>
+                                <select id="tamanioPagina" class="form-select form-select-sm" style="width: 100px;">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="20">20</option>
+                                    <option value="150">Todos</option>
+                                </select>
+                                <span class="small text-muted ms-2" id="textoPaginacionInfo">Mostrando 0 de 0</span>
+                            </div>
+                            <div id="paginacionControles" class="btn-group btn-group-sm"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 2: RECIBOS -->
+            <div class="tab-pane fade" id="pagosContent" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0 d-flex align-items-center">
+                        <i class="fas fa-file-invoice-dollar me-2" style="color: var(--brand-navy);"></i>Historial de Recibos y Comprobantes
+                    </h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-success btn-sm" onclick="exportarExcelPagos()">
+                            <i class="fas fa-file-excel me-1"></i> Exportar Pagos CSV
+                        </button>
+                        <button class="btn btn-luxury-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoPago" onclick="prepararNuevoPago()">
+                            <i class="fas fa-plus-circle me-1"></i> Registrar Recibo de Caja
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-panel">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Buscar por Nombre o Cédula:</label>
+                            <input type="text" id="filtroPagosGlobal" class="form-control" placeholder="Escriba Cédula o Nombre...">
+                        </div>
+                        <!-- RANGO DE DÍAS LÍMITE (DEL DÍA X AL DÍA Y) -->
+                        <div class="col-md-3">
+                            <label class="form-label">Rango Día Límite:</label>
+                            <div class="input-group">
+                                <span class="input-group-text small px-2">Del</span>
+                                <input type="number" id="filtroDiaDesde" class="form-control" placeholder="1" min="1" max="31">
+                                <span class="input-group-text small px-2">al</span>
+                                <input type="number" id="filtroDiaHasta" class="form-control" placeholder="31" min="1" max="31">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Mes:</label>
+                            <select id="filtroMes" class="form-select">
+                                <option value="">-- Todos --</option>
+                                <option value="Enero">Enero</option><option value="Febrero">Febrero</option><option value="Marzo">Marzo</option>
+                                <option value="Abril">Abril</option><option value="Mayo">Mayo</option><option value="Junio">Junio</option>
+                                <option value="Julio">Julio</option><option value="Agosto">Agosto</option><option value="Septiembre">Septiembre</option>
+                                <option value="Octubre">Octubre</option><option value="Noviembre">Noviembre</option><option value="Diciembre">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Estado Pago Arr.:</label>
+                            <select id="filtroEstadoPago" class="form-select">
+                                <option value="">-- Todos --</option>
+                                <option value="CONFIRMADO">CONFIRMADO</option>
+                                <option value="PENDIENTE">PENDIENTE</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button id="btnBuscarPagos" class="btn btn-luxury-primary w-100">
+                                <i class="fas fa-search me-1"></i> Buscar
+                            </button>
+                            <button id="btnLimpiarFiltrosPagos" class="btn btn-outline-secondary">
+                                <i class="fas fa-rotate-left"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-custom">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle table-custom w-100 mb-0" id="tablaPagosExport">
+                                <thead>
+                                    <tr>
+                                        <th>Arrendatario</th>
+                                        <th>Contrato</th>
+                                        <th>Día Lím.</th>
+                                        <th>Medio Pago Arr.</th>
+                                        <th>Estado Arr.</th>
+                                        <th>Propietario</th>
+                                        <th>Fecha Pago Arr.</th>
+                                        <th>Período</th>
+                                        <th>Total Arriendo</th>
+                                        <th>Neto Propietario</th>
+                                        <th>Fecha Pago Prop.</th>
+                                        <th>Estado Prop.</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cuerpoTablaPagos"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination-container">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="small text-muted fw-bold">Mostrar por página:</span>
+                                <select id="tamanioPaginaPagos" class="form-select form-select-sm" style="width: 100px;">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="20">20</option>
+                                    <option value="1000">Todos</option>
+                                </select>
+                                <span class="small text-muted ms-2" id="textoPaginacionPagosInfo">Mostrando 0 de 0</span>
+                            </div>
+                            <div id="paginacionPagosControles" class="btn-group btn-group-sm"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Registro Recibo de Caja -->
+    <div class="modal fade" id="modalNuevoPago" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header modal-header-luxury">
+                    <div class="modal-title-luxury" id="modalPagoTitulo"><i class="fas fa-receipt me-2" style="color: var(--brand-gold);"></i>Registrar Recibo de Caja y Liquidación Propietario</div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formPago">
+                        <input type="hidden" id="editIndexPago" value="-1">
+                        <input type="hidden" id="pagoContratoAsociado" value="">
+                        <input type="hidden" id="pagoCedulaArr" value="">
+                        
+                        <div class="section-header-modal"><i class="fas fa-user-check me-1"></i> 1. Datos del Inquilino y Recibo de Caja</div>
+                        <div class="row g-3 position-relative mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Buscar por Cédula o Nombre Arrendatario *</label>
+                                <input type="text" class="form-control" id="inputBusquedaCedula" placeholder="Escriba número de cédula o nombre..." autocomplete="off">
+                                <div id="sugerenciasCedula" class="autocomplete-suggestions"></div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Contrato Asociado</label>
+                                <input type="text" class="form-control bg-light fw-bold" id="pagoContratoDisplay" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Inmueble / Dirección</label>
+                                <input type="text" class="form-control bg-light" id="pagoDireccionInmueble" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Fecha de Recibo *</label>
+                                <input type="date" class="form-control" id="pagoFechaPago" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Mes *</label>
+                                <select class="form-select" id="pagoMes" required>
+                                    <option value="Enero">Enero</option><option value="Febrero">Febrero</option><option value="Marzo">Marzo</option>
+                                    <option value="Abril">Abril</option><option value="Mayo">Mayo</option><option value="Junio">Junio</option>
+                                    <option value="Julio">Julio</option><option value="Agosto" selected>Agosto</option><option value="Septiembre">Septiembre</option>
+                                    <option value="Octubre">Octubre</option><option value="Noviembre">Noviembre</option><option value="Diciembre">Diciembre</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Año *</label>
+                                <input type="number" class="form-control" id="pagoAno" value="2026" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Medio de Pago Arrendatario *</label>
+                                <select class="form-select" id="pagoFormaPago" required>
+                                    <option value="AV VILLAS">AV VILLAS</option>
+                                    <option value="NEQUI">NEQUI</option>
+                                    <option value="DAVIPLATA">DAVIPLATA</option>
+                                    <option value="EFECTIVO">EFECTIVO</option>
+                                    <option value="BANCOLOMBIA">BANCOLOMBIA</option>
+                                    <option value="DAVIVIENDA">DAVIVIENDA</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Estado Pago Arrendatario *</label>
+                                <select class="form-select fw-bold text-primary" id="pagoEstadoArr" required>
+                                    <option value="CONFIRMADO">CONFIRMADO</option>
+                                    <option value="PENDIENTE">PENDIENTE</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Valor Canon Base ($) *</label>
+                                <input type="text" class="form-control" id="pagoCanon" required oninput="formatearEntradaMoneda(this); calcularLiquidacionPropietario();">
+                            </div>
+                            <!-- MOTIVO Y VALOR DE DESCUENTO ARRENDATARIO (SIN CONCEPTO ADICIONAL) -->
+                            <div class="col-md-3">
+                                <label class="form-label text-danger">Motivo Descuento Inquilino</label>
+                                <input type="text" class="form-control" id="pagoConceptoDescArr" placeholder="Ej: Pintura, Pronto pago...">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label text-danger">Descuento Aplicado ($)</label>
+                                <input type="text" class="form-control" id="pagoDescuento" value="0" oninput="formatearEntradaMoneda(this); calcularLiquidacionPropietario();">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label text-success">Total Recaudado ($)</label>
+                                <input type="text" class="form-control fw-bold text-success bg-light" id="pagoTotalConsignado" readonly>
+                            </div>
+                        </div>
+
+                        <div class="section-header-modal"><i class="fas fa-building-user me-1"></i> 2. Comprobante / Liquidación al Propietario</div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Nombre Propietario *</label>
+                                <input type="text" class="form-control bg-light fw-bold" id="pagoPropietario" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Cédula / NIT Propietario *</label>
+                                <input type="text" class="form-control bg-light fw-bold" id="pagoCedulaProp" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Nombre Titular (A quien se consigna) *</label>
+                                <input type="text" class="form-control" id="pagoTitularConsignar">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Cédula / NIT Titular *</label>
+                                <input type="text" class="form-control" id="pagoCedulaTitular">
+                            </div>
+                            <!-- DESPLEGABLE DE BANCOS DE COLOMBIA -->
+                            <div class="col-md-4">
+                                <label class="form-label">Banco del Propietario *</label>
+                                <select class="form-select" id="pagoBancoProp">
+                                    <option value="">-- Seleccione Banco --</option>
+                                    <option value="BANCOLOMBIA">BANCOLOMBIA</option>
+                                    <option value="DAVIVIENDA">DAVIVIENDA</option>
+                                    <option value="BANCO DE BOGOTA">BANCO DE BOGOTÁ</option>
+                                    <option value="BBVA COLOMBIA">BBVA COLOMBIA</option>
+                                    <option value="AV VILLAS">AV VILLAS</option>
+                                    <option value="BANCO DE OCCIDENTE">BANCO DE OCCIDENTE</option>
+                                    <option value="BANCO POPULAR">BANCO POPULAR</option>
+                                    <option value="SCOTIABANK COLPATRIA">SCOTIABANK COLPATRIA</option>
+                                    <option value="BANCO CAJA SOCIAL">BANCO CAJA SOCIAL</option>
+                                    <option value="BANCO AGRARIO">BANCO AGRARIO</option>
+                                    <option value="NEQUI">NEQUI</option>
+                                    <option value="DAVIPLATA">DAVIPLATA</option>
+                                    <option value="BANCO FALABELLA">BANCO FALABELLA</option>
+                                    <option value="BANCO PICHINCHA">BANCO PICHINCHA</option>
+                                    <option value="LULO BANK">LULO BANK</option>
+                                    <option value="NU COLOMBIA">NU COLOMBIA</option>
+                                    <option value="RAPPIPAY">RAPPIPAY</option>
+                                    <option value="OTRO">OTRO / EFECTIVO</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Número de Cuenta *</label>
+                                <input type="text" class="form-control" id="pagoCuentaProp">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tipo de Liquidación</label>
+                                <select class="form-select" id="pagoTipoLiquidacion" onchange="calcularLiquidacionPropietario()">
+                                    <option value="mensual">Mensual (Descuenta 10% Adm.)</option>
+                                    <option value="anual">Anual / Renovación de Contrato</option>
+                                    <option value="no_aplica">No Aplica</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-center pt-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="aplicar4x1000" onchange="calcularLiquidacionPropietario()">
+                                    <label class="form-check-label small fw-bold" for="aplicar4x1000">Descontar GMF (4x1000 opcional)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Comisión Administración (10%) ($)</label>
+                                <input type="text" class="form-control bg-light text-danger fw-bold" id="pagoComision" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Deducción 4x1000 ($)</label>
+                                <input type="text" class="form-control bg-light text-danger fw-bold" id="pagoValor4x1000" value="$ 0" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label text-danger">Concepto Descuento Propietario</label>
+                                <input type="text" class="form-control" id="pagoConceptoDescProp" placeholder="Ej: Arreglo tubería, Pintura...">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label text-danger">Valor Descuento Propietario ($)</label>
+                                <input type="text" class="form-control" id="pagoValorDescProp" value="0" oninput="formatearEntradaMoneda(this); calcularLiquidacionPropietario();">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label text-primary">Neto a Consignar Propietario ($) *</label>
+                                <input type="text" class="form-control fw-bold text-primary bg-light fs-6" id="pagoNetoPropietario" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Fecha Pago Propietario</label>
+                                <input type="date" class="form-control" id="pagoFechaProp">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Medio Pago Propietario *</label>
+                                <select class="form-select" id="pagoFormaProp">
+                                    <option value="AV VILLAS">AV VILLAS</option>
+                                    <option value="EFECTIVO">EFECTIVO</option>
+                                    <option value="DAVIPLATA">DAVIPLATA</option>
+                                    <option value="NEQUI">NEQUI</option>
+                                    <option value="BANCOLOMBIA">BANCOLOMBIA</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Estado Consignación Propietario *</label>
+                                <select class="form-select fw-bold" id="pagoEstadoProp">
+                                    <option value="CONFIRMADO">CONFIRMADO</option>
+                                    <option value="PENDIENTE">PENDIENTE</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Observaciones / Notas</label>
+                                <textarea class="form-control" id="pagoObservaciones" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-luxury-primary" id="btnGuardarPago">Guardar Recibo y Comprobante</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalle Contrato -->
+    <div class="modal fade" id="modalVerDetalle" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header modal-header-luxury">
+                    <div class="modal-title-luxury"><i class="fas fa-id-card me-2" style="color: var(--brand-gold);"></i>Información General del Contrato</div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-light p-4">
+                    <div class="card p-3 mb-3 border-0 shadow-sm" style="border-radius: 14px;">
+                        <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);">Datos Principales</h6>
+                        <div class="row g-2 small">
+                            <div class="col-md-4"><strong>Contrato:</strong> <span id="detContrato"></span></div>
+                            <div class="col-md-4"><strong>No. Estudio:</strong> <span id="detEstudio"></span></div>
+                            <div class="col-md-4"><strong>Estado:</strong> <span id="detEstado"></span></div>
+                            <div class="col-md-4"><strong>F. Inicial:</strong> <span id="detFechaIni"></span></div>
+                            <div class="col-md-4"><strong>F. Vencimiento:</strong> <span id="detFechaVto"></span></div>
+                            <div class="col-md-4"><strong>F. Aviso:</strong> <span id="detFechaAviso"></span></div>
+                        </div>
+                    </div>
+                    <div class="card p-3 border-0 shadow-sm" style="border-radius: 14px;">
+                        <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);">Partes Involucradas y Datos de Banco</h6>
+                        <div class="row g-2 small">
+                            <div class="col-md-4"><strong>Arrendatario:</strong> <span id="detArrendatario"></span></div>
+                            <div class="col-md-4"><strong>Id Arr:</strong> <span id="detCedulaArr"></span></div>
+                            <div class="col-md-4"><strong>Celular Arr:</strong> <span id="detCelArr"></span></div>
+                            <div class="col-md-4"><strong>Propietario:</strong> <span id="detPropietario"></span></div>
+                            <div class="col-md-4"><strong>Cédula Propietario:</strong> <span id="detCedulaProp"></span></div>
+                            <div class="col-md-4"><strong>Titular a Consignar:</strong> <span id="detTitularConsignar"></span></div>
+                            <div class="col-md-4"><strong>Cédula Titular:</strong> <span id="detCedulaTitular"></span></div>
+                            <div class="col-md-4"><strong>Banco:</strong> <span id="detBancoProp"></span></div>
+                            <div class="col-md-4"><strong>No. Cuenta:</strong> <span id="detCuentaProp"></span></div>
+                            <div class="col-md-12"><strong>Inmueble / Dirección:</strong> <span id="detDireccion"></span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar / Editar Contrato -->
+    <div class="modal fade" id="modalAdicionar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header modal-header-luxury">
+                    <div class="modal-title-luxury" id="modalAdicionarLabel"><i class="fas fa-file-signature me-2" style="color: var(--brand-gold);"></i>Gestión de Contrato</div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formContrato">
+                        <input type="hidden" id="editIndex" value="-1">
+                        <div class="row g-3">
+                            <div class="col-md-4"><label class="form-label">No. Contrato</label><input type="text" class="form-control bg-light" id="valContrato" readonly></div>
+                            <div class="col-md-4"><label class="form-label">No. Estudio</label><input type="text" class="form-control" id="valEstudio"></div>
+                            <div class="col-md-4"><label class="form-label">Estado</label><select class="form-select" id="valEstado"><option value="Activo">Activo</option><option value="Retirado">Retirado</option></select></div>
+                            <div class="col-md-4"><label class="form-label">Arrendatario (Nombre)</label><input type="text" class="form-control" id="valArrendatario" required></div>
+                            <div class="col-md-4"><label class="form-label">Cédula o NIT Arrendatario</label><input type="text" class="form-control" id="valCedulaArr"></div>
+                            <div class="col-md-4"><label class="form-label">Nombre Propietario</label><input type="text" class="form-control" id="valPropietario"></div>
+                            <div class="col-md-4"><label class="form-label">Cédula o NIT Propietario</label><input type="text" class="form-control" id="valCedulaProp"></div>
+                            <div class="col-md-4"><label class="form-label">Nombre Titular (Consignar)</label><input type="text" class="form-control" id="valTitularConsignar"></div>
+                            <div class="col-md-4"><label class="form-label">Cédula o NIT Titular</label><input type="text" class="form-control" id="valCedulaTitular"></div>
+                            <div class="col-md-6">
+                                <label class="form-label">Banco del Propietario</label>
+                                <select class="form-select" id="valBancoProp">
+                                    <option value="">-- Seleccione Banco --</option>
+                                    <option value="BANCOLOMBIA">BANCOLOMBIA</option>
+                                    <option value="DAVIVIENDA">DAVIVIENDA</option>
+                                    <option value="BANCO DE BOGOTA">BANCO DE BOGOTÁ</option>
+                                    <option value="BBVA COLOMBIA">BBVA COLOMBIA</option>
+                                    <option value="AV VILLAS">AV VILLAS</option>
+                                    <option value="BANCO DE OCCIDENTE">BANCO DE OCCIDENTE</option>
+                                    <option value="BANCO POPULAR">BANCO POPULAR</option>
+                                    <option value="SCOTIABANK COLPATRIA">SCOTIABANK COLPATRIA</option>
+                                    <option value="BANCO CAJA SOCIAL">BANCO CAJA SOCIAL</option>
+                                    <option value="BANCO AGRARIO">BANCO AGRARIO</option>
+                                    <option value="NEQUI">NEQUI</option>
+                                    <option value="DAVIPLATA">DAVIPLATA</option>
+                                    <option value="BANCO FALABELLA">BANCO FALABELLA</option>
+                                    <option value="BANCO PICHINCHA">BANCO PICHINCHA</option>
+                                    <option value="LULO BANK">LULO BANK</option>
+                                    <option value="NU COLOMBIA">NU COLOMBIA</option>
+                                    <option value="RAPPIPAY">RAPPIPAY</option>
+                                    <option value="OTRO">OTRO / EFECTIVO</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6"><label class="form-label">Número de Cuenta</label><input type="text" class="form-control" id="valCuentaProp"></div>
+                            <div class="col-md-6"><label class="form-label">Dirección Inmueble</label><input type="text" class="form-control" id="valDireccion" required></div>
+                            <div class="col-md-6"><label class="form-label">Canon ($)</label><input type="text" class="form-control" id="valCanonNumerico" required oninput="formatearEntradaMoneda(this)"></div>
+                            <div class="col-md-4"><label class="form-label">Día Límite</label><input type="number" class="form-control" id="valDiaLimite" value="5" min="1" max="31"></div>
+                            <div class="col-md-4"><label class="form-label">Fecha Inicial</label><input type="date" class="form-control" id="valFechaIni" onchange="calcularVencimientoDinamico()"></div>
+                            <div class="col-md-4"><label class="form-label">Fecha Vencimiento</label><input type="date" class="form-control bg-light" id="valFechaVto" readonly></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-luxury-primary" id="btnGuardar">Guardar Contrato</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // ==========================================================================
+        // CONFIGURACIÓN DE LA APLICACIÓN — ajustar aquí si cambian las reglas
+        // ==========================================================================
+
+        // Prefijo de TODAS las claves de localStorage propias de este sistema.
+        // Las funciones de Respaldo/Restaurar/"Restaurar Datos" solo leen o
+        // eliminan claves con este prefijo, para no afectar otras páginas que
+        // pudieran compartir el mismo dominio (por ejemplo, en GitHub Pages).
+        const PREFIJO_CLAVES_APP = 'brw_';
+
+        // Mapeo de columnas del CSV a los campos internos del sistema para la
+        // importación inicial de datos (botón "Importar CSV"). La clave (izquierda)
+        // es el nombre interno; el valor (derecha) es el encabezado que debe tener
+        // esa columna en la primera fila del archivo CSV. Ajuste los valores de la
+        // derecha si su archivo usa otros títulos de columna.
+        const MAPEO_CSV_IMPORTACION = {
+            arrendatario: 'Arrendatario',   // Nombre completo del arrendatario
+            cedulaArr: 'Cedula',            // Cédula o NIT del arrendatario
+            inmueble: 'Inmueble',           // Dirección del inmueble
+            propietario: 'Propietario',     // Nombre del propietario
+            canon: 'Canon',                 // Valor mensual del canon (solo números)
+            diaLimite: 'DiaLimite',         // Día límite de pago (1-31)
+            fechaPago: 'FechaPago',         // Fecha del recibo, formato AAAA-MM-DD (opcional)
+            medioPago: 'MedioPago',         // Medio de pago del arrendatario (opcional)
+            estadoPago: 'EstadoPago',       // CONFIRMADO / PENDIENTE (opcional)
+            periodo: 'Periodo'              // Período del pago, formato AAAA-MM (opcional)
+        };
+
+        // Datos de ejemplo: se dejan vacíos a propósito antes de publicar el sistema,
+        // para no exponer información real de clientes en un repositorio público.
+        // El sistema arranca sin registros; use "Importar CSV" o "Restaurar Respaldo"
+        // para cargar información.
+        const datosBaseIniciales = [];
+        const datosPagosIniciales = [];
+
+        let datosBase = JSON.parse(localStorage.getItem('brw_datosBase')) || datosBaseIniciales;
+        let datosPagosRaw = JSON.parse(localStorage.getItem('brw_datosPagos_v10')) || JSON.parse(localStorage.getItem('brw_datosPagos_v9')) || datosPagosIniciales;
+
+        // Normaliza los pagos leídos de localStorage y recalcula sus valores derivados
+        // (por si el registro es antiguo o le faltan campos), usando las mismas fórmulas
+        // que calcularLiquidacionPropietario():
+        //   Total Recaudado   = Canon - Descuento al arrendatario
+        //   Comisión Adm.     = 10% del Canon, solo si la liquidación es "mensual"
+        //   GMF (4x1000)      = 0.4% del Canon, si el registro lo trae guardado
+        //   Neto Propietario  = Canon - Comisión - GMF - Descuento al propietario
+        let datosPagos = datosPagosRaw.map(p => {
+            let canonVal = p.canon || p.totalConsignado || 0;
+            let descuentoVal = p.descuento || 0;
+            let totalRecaudadoVal = canonVal - descuentoVal;
+
+            let tipoLiq = p.tipoLiquidacion || 'mensual';
+            let comisionVal = tipoLiq === 'mensual' ? Math.round(canonVal * 0.1) : 0;
+            let descPropVal = p.valorDescProp || 0;
+            let gmfVal = p.valor4x1000 || 0;
+
+            let netoCalculado = canonVal - comisionVal - gmfVal - descPropVal;
+
+            let cedulaArrVal = p.cedulaArr || "";
+            let cedulaPropVal = p.cedulaProp || "";
+            if ((!cedulaArrVal || !cedulaPropVal) && p.contrato) {
+                let matchContrato = datosBase.find(c => c.contrato === p.contrato);
+                if (matchContrato) {
+                    if (!cedulaArrVal) cedulaArrVal = matchContrato.cedulaArr || "";
+                    if (!cedulaPropVal) cedulaPropVal = matchContrato.cedulaProp || "";
+                }
+            }
+
+            return {
+                arrendatario: p.arrendatario || 'Sin Arrendatario',
+                cedulaArr: cedulaArrVal,
+                propietario: p.propietario || 'Sin Especificar',
+                cedulaProp: cedulaPropVal,
+                titularConsignar: p.titularConsignar || "",
+                cedulaTitular: p.cedulaTitular || "",
+                bancoProp: p.bancoProp || "",
+                cuentaProp: p.cuentaProp || "",
+                fechaPago: p.fechaPago || '2026-01-01',
+                ano: (p.ano || 2026).toString(),
+                mes: p.mes || 'Enero',
+                contrato: p.contrato || '0',
+                direccion: p.direccion || 'Sin Dirección',
+                formaPago: p.formaPago || 'AV VILLAS',
+                estadoArr: p.estadoArr || 'CONFIRMADO',
+                canon: canonVal,
+                conceptoDescArr: p.conceptoDescArr || '',
+                descuento: descuentoVal,
+                totalConsignado: totalRecaudadoVal,
+                tipoLiquidacion: tipoLiq,
+                comision: comisionVal,
+                valor4x1000: gmfVal,
+                conceptoDescProp: p.conceptoDescProp || '',
+                valorDescProp: descPropVal,
+                netoPropietario: netoCalculado,
+                fechaProp: p.fechaProp || '',
+                formaProp: p.formaProp || 'AV VILLAS',
+                estadoProp: p.estadoProp || 'CONFIRMADO',
+                observaciones: p.observaciones || ''
+            };
+        });
+
+        function guardarEnLocalStorage() {
+            localStorage.setItem('brw_datosBase', JSON.stringify(datosBase));
+            localStorage.setItem('brw_datosPagos_v10', JSON.stringify(datosPagos));
+        }
+
+        function restaurarDatosOriginales() {
+            if(confirm('¿Desea restablecer todos los datos a la versión inicial?')) {
+                // Solo se eliminan las claves propias de esta aplicación (prefijo brw_)
+                Object.keys(localStorage)
+                    .filter(clave => clave.startsWith(PREFIJO_CLAVES_APP))
+                    .forEach(clave => localStorage.removeItem(clave));
+                datosBase = [...datosBaseIniciales];
+                datosPagos = [...datosPagosIniciales];
+                aplicarFiltros();
+                cargarTablaPagos();
+                alert('¡Datos restaurados con éxito!');
+            }
+        }
+
+        // ==========================================================================
+        // RESPALDO Y RESTAURACIÓN COMPLETA (archivo .json)
+        // ==========================================================================
+
+        // Descarga TODAS las claves de localStorage propias de la app en un único
+        // archivo .json (contratos, pagos y cualquier otra clave con prefijo brw_).
+        function respaldarTodoJSON() {
+            let clavesApp = Object.keys(localStorage).filter(clave => clave.startsWith(PREFIJO_CLAVES_APP));
+            let datosRespaldo = {};
+            clavesApp.forEach(clave => {
+                try {
+                    datosRespaldo[clave] = JSON.parse(localStorage.getItem(clave));
+                } catch (e) {
+                    datosRespaldo[clave] = localStorage.getItem(clave);
+                }
+            });
+
+            let respaldo = {
+                app: 'Bienes Raíces White - Sistema de Arriendos',
+                version: 1,
+                fecha: new Date().toISOString(),
+                datos: datosRespaldo
+            };
+
+            let blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: 'application/json;charset=utf-8;' });
+            let link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Respaldo_BRW_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Lee el archivo .json seleccionado por el usuario y dispara la restauración
+        function manejarArchivoRespaldo(event) {
+            let archivo = event.target.files[0];
+            if (!archivo) return;
+
+            let lector = new FileReader();
+            lector.onload = function(e) {
+                let respaldo;
+                try {
+                    respaldo = JSON.parse(e.target.result);
+                } catch (err) {
+                    alert('El archivo seleccionado no es un JSON válido.');
+                    event.target.value = '';
+                    return;
+                }
+
+                // Validación mínima de la estructura esperada del respaldo
+                if (!respaldo || typeof respaldo !== 'object' || !respaldo.datos || typeof respaldo.datos !== 'object') {
+                    alert('El archivo no tiene la estructura de un respaldo válido de este sistema.');
+                    event.target.value = '';
+                    return;
+                }
+
+                let clavesRespaldo = Object.keys(respaldo.datos);
+                if (clavesRespaldo.length === 0) {
+                    alert('El respaldo no contiene datos para restaurar.');
+                    event.target.value = '';
+                    return;
+                }
+
+                if (!confirm('Esto reemplazará los datos actuales, ¿continuar?')) {
+                    event.target.value = '';
+                    return;
+                }
+
+                // Elimina solo las claves propias de la aplicación antes de restaurar
+                Object.keys(localStorage)
+                    .filter(clave => clave.startsWith(PREFIJO_CLAVES_APP))
+                    .forEach(clave => localStorage.removeItem(clave));
+
+                clavesRespaldo.forEach(clave => {
+                    let valor = respaldo.datos[clave];
+                    localStorage.setItem(clave, typeof valor === 'string' ? valor : JSON.stringify(valor));
+                });
+
+                alert('¡Respaldo restaurado con éxito! La página se recargará.');
+                event.target.value = '';
+                location.reload();
+            };
+            lector.onerror = function() {
+                alert('No se pudo leer el archivo seleccionado.');
+            };
+            lector.readAsText(archivo, 'UTF-8');
+        }
+
+        // ==========================================================================
+        // IMPORTACIÓN DE DATOS INICIALES DESDE CSV
+        // ==========================================================================
+
+        // Separa una línea CSV respetando comillas dobles y el delimitador indicado
+        function analizarLineaCSV(linea, delimitador) {
+            let resultado = [];
+            let actual = '';
+            let dentroComillas = false;
+            for (let i = 0; i < linea.length; i++) {
+                let c = linea[i];
+                if (c === '"') {
+                    if (dentroComillas && linea[i + 1] === '"') { actual += '"'; i++; }
+                    else dentroComillas = !dentroComillas;
+                } else if (c === delimitador && !dentroComillas) {
+                    resultado.push(actual);
+                    actual = '';
+                } else {
+                    actual += c;
+                }
+            }
+            resultado.push(actual);
+            return resultado.map(v => v.trim());
+        }
+
+        function manejarArchivoCSV(event) {
+            let archivo = event.target.files[0];
+            if (!archivo) return;
+
+            let lector = new FileReader();
+            lector.onload = function(e) {
+                procesarCSVImportado(e.target.result);
+                event.target.value = '';
+            };
+            lector.onerror = function() {
+                alert('No se pudo leer el archivo CSV seleccionado.');
+            };
+            lector.readAsText(archivo, 'UTF-8');
+        }
+
+        // Convierte el texto del CSV en contratos (y recibos, si el CSV los trae)
+        // usando el mapeo de columnas definido en MAPEO_CSV_IMPORTACION.
+        function procesarCSVImportado(texto) {
+            // Quita el BOM inicial (marca de orden de bytes) si el archivo lo trae
+            if (texto.charCodeAt(0) === 0xFEFF) texto = texto.slice(1);
+            let lineas = texto.split(/\r\n|\n|\r/).filter(l => l.trim() !== '');
+            if (lineas.length < 2) {
+                alert('El archivo CSV está vacío o no contiene registros.');
+                return;
+            }
+
+            // Detecta el delimitador según el encabezado (punto y coma o coma)
+            let delimitador = lineas[0].includes(';') ? ';' : ',';
+            let encabezados = analizarLineaCSV(lineas[0], delimitador);
+
+            let indices = {};
+            Object.keys(MAPEO_CSV_IMPORTACION).forEach(campo => {
+                let nombreColumna = MAPEO_CSV_IMPORTACION[campo];
+                indices[campo] = encabezados.findIndex(h => h.toLowerCase() === nombreColumna.toLowerCase());
+            });
+
+            if (indices.arrendatario === -1) {
+                alert(`No se encontró la columna "${MAPEO_CSV_IMPORTACION.arrendatario}" (arrendatario) en el CSV. Revise el mapeo de columnas o los encabezados del archivo.`);
+                return;
+            }
+
+            let importados = 0;
+            let omitidos = 0;
+            let numerosContrato = datosBase.map(c => parseInt(c.contrato) || 0);
+            let maxContrato = numerosContrato.length ? Math.max(...numerosContrato) : 0;
+            let mesesNombre = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+            for (let i = 1; i < lineas.length; i++) {
+                let columnas = analizarLineaCSV(lineas[i], delimitador);
+                let obtener = (campo) => (indices[campo] !== undefined && indices[campo] !== -1) ? (columnas[indices[campo]] || '').trim() : '';
+
+                let arrendatario = obtener('arrendatario');
+                let inmueble = obtener('inmueble');
+
+                // Fila tolerada como incompleta si faltan los datos mínimos (arrendatario e inmueble)
+                if (!arrendatario || !inmueble) {
+                    omitidos++;
+                    continue;
+                }
+
+                maxContrato++;
+                let rawCanon = obtenerValorLimpio(obtener('canon'));
+                let diaLimite = obtener('diaLimite') || '5';
+                let cedulaArr = obtener('cedulaArr');
+                let propietario = obtener('propietario') || 'INDEPENDIENTE';
+
+                let nuevoContrato = {
+                    item: (datosBase.length + 1).toString(),
+                    contrato: maxContrato.toString(),
+                    estudio: 'N/A',
+                    estado: 'Activo',
+                    arrendatario: arrendatario,
+                    cedulaArr: cedulaArr,
+                    celArr: '',
+                    correoArr: '',
+                    propietario: propietario,
+                    cedulaProp: '',
+                    titularConsignar: propietario,
+                    cedulaTitular: '',
+                    bancoProp: '',
+                    cuentaProp: '',
+                    direccion: inmueble,
+                    canon: '$ ' + formatearMonedaInput(rawCanon),
+                    rawCanon: rawCanon,
+                    diaLimite: diaLimite,
+                    fechaIni: '',
+                    fechaVto: ''
+                };
+                datosBase.push(nuevoContrato);
+
+                // Si el CSV incluye fecha de pago, crea también el recibo asociado
+                let fechaPago = obtener('fechaPago');
+                if (fechaPago) {
+                    let periodo = obtener('periodo');
+                    let anoPeriodo = fechaPago.slice(0, 4) || '2026';
+                    let mesPeriodo = 'Enero';
+                    if (periodo && periodo.includes('-')) {
+                        let partes = periodo.split('-');
+                        anoPeriodo = partes[0];
+                        mesPeriodo = mesesNombre[parseInt(partes[1], 10) - 1] || 'Enero';
+                    } else {
+                        let partesFecha = fechaPago.split('-');
+                        if (partesFecha.length === 3) {
+                            anoPeriodo = partesFecha[0];
+                            mesPeriodo = mesesNombre[parseInt(partesFecha[1], 10) - 1] || 'Enero';
+                        }
+                    }
+
+                    // Comisión de administración estándar (10%) sobre el canon importado
+                    let comision = Math.round(rawCanon * 0.10);
+                    let netoPropietario = rawCanon - comision;
+
+                    datosPagos.unshift({
+                        arrendatario: arrendatario,
+                        cedulaArr: cedulaArr,
+                        propietario: propietario,
+                        cedulaProp: '',
+                        titularConsignar: propietario,
+                        cedulaTitular: '',
+                        bancoProp: '',
+                        cuentaProp: '',
+                        fechaPago: fechaPago,
+                        ano: anoPeriodo,
+                        mes: mesPeriodo,
+                        contrato: nuevoContrato.contrato,
+                        direccion: inmueble,
+                        formaPago: obtener('medioPago') || 'EFECTIVO',
+                        estadoArr: (obtener('estadoPago') || 'CONFIRMADO').toUpperCase(),
+                        canon: rawCanon,
+                        conceptoDescArr: '',
+                        descuento: 0,
+                        totalConsignado: rawCanon,
+                        tipoLiquidacion: 'mensual',
+                        comision: comision,
+                        valor4x1000: 0,
+                        conceptoDescProp: '',
+                        valorDescProp: 0,
+                        netoPropietario: netoPropietario,
+                        fechaProp: '',
+                        formaProp: 'EFECTIVO',
+                        estadoProp: 'PENDIENTE',
+                        observaciones: 'Importado desde CSV'
+                    });
+                }
+
+                importados++;
+            }
+
+            if (importados > 0) {
+                guardarEnLocalStorage();
+                if (typeof window.aplicarFiltros === 'function') window.aplicarFiltros();
+                cargarTablaPagos();
+            }
+
+            alert(`Importación finalizada.\nRegistros importados: ${importados}\nRegistros omitidos (incompletos): ${omitidos}`);
+        }
+
+        let paginaActual = 1;
+        let paginaActualPagos = 1;
+
+        function salirAplicacion() {
+            if(confirm('¿Desea salir de la aplicación?')) {
+                window.close();
+                window.location.href = "about:blank";
+            }
+        }
+
+        function formatearMonedaInput(valor) {
+            if (valor === undefined || valor === null || valor === "") return "";
+            let limpio = valor.toString().replace(/\D/g, "");
+            return limpio.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        function formatearEntradaMoneda(input) {
+            input.value = formatearMonedaInput(input.value);
+        }
+
+        function obtenerValorLimpio(valorStr) {
+            if (!valorStr) return 0;
+            let limpio = valorStr.toString().replace(/\$/g, "").replace(/\./g, "").replace(/\s/g, "").replace(",", ".");
+            return parseFloat(limpio) || 0;
+        }
+
+        function calcularLiquidacionPropietario() {
+            let canon = obtenerValorLimpio($('#pagoCanon').val());
+            let descuentoArr = obtenerValorLimpio($('#pagoDescuento').val());
+
+            // Total Recaudado = lo que pagó el arrendatario menos su descuento (si aplica)
+            let totalRecaudado = canon - descuentoArr;
+            $('#pagoTotalConsignado').val(totalRecaudado >= 0 ? formatearMonedaInput(totalRecaudado) : "0");
+
+            let tipoLiq = $('#pagoTipoLiquidacion').val();
+            // Comisión de administración: 10% del canon, solo en liquidaciones mensuales
+            // (en liquidaciones anuales/renovación o "no aplica" no se cobra comisión).
+            let comision = (tipoLiq === 'mensual') ? canon * 0.10 : 0;
+            // GMF / 4x1000: gravamen bancario opcional, 0.4% (4 x 1.000) del canon,
+            // solo se descuenta si el usuario marca la casilla "Descontar GMF".
+            let gmf4x1000 = $('#aplicar4x1000').is(':checked') ? canon * 0.004 : 0;
+            let descPropietarioVal = obtenerValorLimpio($('#pagoValorDescProp').val());
+
+            // Neto a Consignar al Propietario = canon - comisión - GMF - descuentos propios del propietario
+            let netoPropietario = canon - comision - gmf4x1000 - descPropietarioVal;
+
+            $('#pagoComision').val(formatearMonedaInput(Math.round(comision)));
+            $('#pagoValor4x1000').val("$ " + formatearMonedaInput(Math.round(gmf4x1000)));
+            $('#pagoNetoPropietario').val(netoPropietario >= 0 ? formatearMonedaInput(Math.round(netoPropietario)) : "0");
+        }
+
+        function calcularVencimientoDinamico() {
+            let fechaIni = $('#valFechaIni').val();
+            if(fechaIni) {
+                let d = new Date(fechaIni);
+                d.setFullYear(d.getFullYear() + 1);
+                d.setDate(d.getDate() - 1);
+                $('#valFechaVto').val(d.toISOString().split('T')[0]);
+            }
+        }
+
+        $(document).ready(function() {
+            aplicarFiltros();
+            cargarTablaPagos();
+
+            $('#pagoValorDescProp, #pagoDescuento').on('input keyup change', calcularLiquidacionPropietario);
+
+            $('#tamanioPaginaPagos').on('change', function() {
+                paginaActualPagos = 1;
+                filtrarYMostrarPagos();
+            });
+
+            function obtenerContratosFiltrados() {
+                let textoGlobal = $('#filtroGlobal').val().toLowerCase().trim();
+                let estadoSel = $('#filtroEstado').val();
+                let diaSel = $('#filtroDiaLimite').val();
+                let concepto = $('#conceptoFecha').val();
+                let minFecha = $('#minFecha').val();
+                let maxFecha = $('#maxFecha').val();
+
+                return datosBase.filter(item => {
+                    let matchGlobal = true;
+                    if(textoGlobal) {
+                        let cadena = `${item.contrato} ${item.estudio} ${item.arrendatario} ${item.cedulaArr} ${item.propietario} ${item.cedulaProp} ${item.titularConsignar} ${item.direccion}`.toLowerCase();
+                        matchGlobal = cadena.includes(textoGlobal);
+                    }
+                    let matchEstado = estadoSel ? (item.estado.toLowerCase() === estadoSel.toLowerCase()) : true;
+                    let matchDia = diaSel ? (item.diaLimite.toString() === diaSel.toString()) : true;
+                    
+                    let fechaAProbar = concepto === 'ini' ? item.fechaIni : item.fechaVto;
+                    let matchFechas = true;
+                    if(minFecha && fechaAProbar) matchFechas = matchFechas && (fechaAProbar >= minFecha);
+                    if(maxFecha && fechaAProbar) matchFechas = matchFechas && (fechaAProbar <= maxFecha);
+
+                    return matchGlobal && matchEstado && matchDia && matchFechas;
+                });
+            }
+
+            function aplicarFiltros() {
+                paginaActual = 1;
+                renderizarTablaPaginada();
+            }
+            // Se expone en window porque "restaurarDatosOriginales" y "eliminarContrato"
+            // están fuera de este closure y necesitan poder refrescar la tabla de contratos.
+            window.aplicarFiltros = aplicarFiltros;
+
+            window.cambiarPagina = function(p) {
+                paginaActual = p;
+                renderizarTablaPaginada();
+            }
+
+            function renderizarTablaPaginada() {
+                let filtrados = obtenerContratosFiltrados();
+                let tamanioVal = $('#tamanioPagina').val();
+                let tamanio = tamanioVal === "150" ? filtrados.length : (parseInt(tamanioVal) || 10);
+                let totalRegistros = filtrados.length;
+                let totalPaginas = tamanioVal === "150" ? 1 : (Math.ceil(totalRegistros / tamanio) || 1);
+
+                if(paginaActual > totalPaginas) paginaActual = totalPaginas;
+
+                let inicio = tamanioVal === "150" ? 0 : (paginaActual - 1) * tamanio;
+                let fin = tamanioVal === "150" ? totalRegistros : inicio + tamanio;
+                let paginados = filtrados.slice(inicio, fin);
+
+                renderizarTablaContratos(paginados, totalRegistros);
+                renderizarControlesPaginacion(totalPaginas, totalRegistros, inicio, fin);
+            }
+
+            $('#btnBuscarContratos').on('click', aplicarFiltros);
+            $('#filtroGlobal').on('keyup', function(e) { if (e.key === 'Enter') aplicarFiltros(); });
+            $('#filtroEstado, #filtroDiaLimite, #conceptoFecha, #minFecha, #maxFecha, #tamanioPagina').on('change', aplicarFiltros);
+            
+            $('#btnLimpiarFiltros').on('click', function() {
+                $('#filtroGlobal, #minFecha, #maxFecha').val('');
+                $('#filtroEstado, #filtroDiaLimite').val('');
+                aplicarFiltros();
+            });
+
+            $('#btnBuscarPagos').on('click', function() {
+                paginaActualPagos = 1;
+                filtrarYMostrarPagos();
+            });
+
+            $('#filtroMes, #filtroEstadoPago').on('change', function() {
+                paginaActualPagos = 1;
+                filtrarYMostrarPagos();
+            });
+
+            $('#filtroDiaDesde, #filtroDiaHasta, #filtroPagosGlobal').on('keyup change', function(e) {
+                if (e.key === 'Enter' || e.type === 'change') {
+                    paginaActualPagos = 1;
+                    filtrarYMostrarPagos();
+                }
+            });
+
+            $('#btnLimpiarFiltrosPagos').on('click', function() {
+                $('#filtroPagosGlobal, #filtroDiaDesde, #filtroDiaHasta').val('');
+                $('#filtroMes, #filtroEstadoPago').val('');
+                paginaActualPagos = 1;
+                cargarTablaPagos(datosPagos);
+            });
+
+            $('#inputBusquedaCedula').on('input', function() {
+                let val = $(this).val().toLowerCase().trim();
+                let sugerenciasBox = $('#sugerenciasCedula');
+                sugerenciasBox.html('');
+                if(val.length < 1) { sugerenciasBox.hide(); return; }
+
+                let filtrados = datosBase.filter(c => c.arrendatario.toLowerCase().includes(val) || (c.cedulaArr && c.cedulaArr.toLowerCase().includes(val)));
+                if(filtrados.length > 0) {
+                    filtrados.forEach(c => {
+                        sugerenciasBox.append(`<div class="autocomplete-suggestion" 
+                            data-nombre="${c.arrendatario}" 
+                            data-cedulaarr="${c.cedulaArr || ''}"
+                            data-propietario="${c.propietario || 'INDEPENDIENTE'}" 
+                            data-cedulaprop="${c.cedulaProp || ''}"
+                            data-titular="${c.titularConsignar || c.propietario || 'INDEPENDIENTE'}"
+                            data-cedulatitular="${c.cedulaTitular || c.cedulaProp || ''}"
+                            data-banco="${c.bancoProp || ''}" 
+                            data-cuenta="${c.cuentaProp || ''}" 
+                            data-contrato="${c.contrato}" 
+                            data-direccion="${c.direccion}" 
+                            data-canon="${c.rawCanon || 0}">
+                            <strong>Cédula: ${c.cedulaArr || 'N/A'}</strong> - ${c.arrendatario} <span class="text-muted">(Contrato #${c.contrato})</span>
+                        </div>`);
+                    });
+                    sugerenciasBox.show();
+                } else { sugerenciasBox.hide(); }
+            });
+
+            $(document).on('click', '.autocomplete-suggestion', function() {
+                $('#inputBusquedaCedula').val($(this).data('nombre'));
+                $('#pagoCedulaArr').val($(this).data('cedulaarr'));
+                $('#pagoPropietario').val($(this).data('propietario'));
+                $('#pagoCedulaProp').val($(this).data('cedulaprop'));
+                $('#pagoTitularConsignar').val($(this).data('titular'));
+                $('#pagoCedulaTitular').val($(this).data('cedulatitular'));
+                $('#pagoBancoProp').val($(this).data('banco'));
+                $('#pagoCuentaProp').val($(this).data('cuenta'));
+                $('#pagoContratoDisplay').val("#" + $(this).data('contrato'));
+                $('#pagoContratoAsociado').val($(this).data('contrato'));
+                $('#pagoDireccionInmueble').val($(this).data('direccion'));
+                $('#pagoCanon').val(formatearMonedaInput($(this).data('canon')));
+                $('#sugerenciasCedula').hide();
+                calcularLiquidacionPropietario();
+            });
+
+            // GUARDAR RECIBO DE CAJA CON VALIDACIÓN DE MES/AÑO
+            $('#btnGuardarPago').on('click', function() {
+                let indexPago = $('#editIndexPago').val();
+                let contrato = $('#pagoContratoAsociado').val();
+                let arrendatario = $('#inputBusquedaCedula').val();
+                let cedulaArr = $('#pagoCedulaArr').val();
+                let fechaPago = $('#pagoFechaPago').val();
+                let mes = $('#pagoMes').val();
+                let ano = $('#pagoAno').val().toString();
+
+                if(!contrato || !arrendatario || !fechaPago) {
+                    alert('Complete los campos obligatorios (*).'); return;
+                }
+
+                let existeDuplicado = datosPagos.some((p, idx) => {
+                    if (indexPago != -1 && idx == indexPago) return false;
+                    return (p.contrato === contrato || p.arrendatario.toLowerCase() === arrendatario.toLowerCase()) 
+                           && p.mes === mes 
+                           && p.ano.toString() === ano;
+                });
+
+                if (existeDuplicado) {
+                    alert(`¡ATENCIÓN! Ya se grabó previamente un Recibo de Caja para este arrendatario correspondiente al período ${mes} / ${ano}.`);
+                    return;
+                }
+
+                let pagoObj = {
+                    arrendatario: arrendatario,
+                    cedulaArr: cedulaArr,
+                    propietario: $('#pagoPropietario').val() || 'Sin Especificar',
+                    cedulaProp: $('#pagoCedulaProp').val() || '',
+                    titularConsignar: $('#pagoTitularConsignar').val() || $('#pagoPropietario').val() || 'Sin Especificar',
+                    cedulaTitular: $('#pagoCedulaTitular').val() || '',
+                    bancoProp: $('#pagoBancoProp').val() || '',
+                    cuentaProp: $('#pagoCuentaProp').val() || '',
+                    fechaPago: fechaPago,
+                    ano: ano,
+                    mes: mes,
+                    contrato: contrato,
+                    direccion: $('#pagoDireccionInmueble').val(),
+                    formaPago: $('#pagoFormaPago').val(),
+                    estadoArr: $('#pagoEstadoArr').val(),
+                    canon: obtenerValorLimpio($('#pagoCanon').val()),
+                    conceptoDescArr: $('#pagoConceptoDescArr').val(),
+                    descuento: obtenerValorLimpio($('#pagoDescuento').val()),
+                    totalConsignado: obtenerValorLimpio($('#pagoTotalConsignado').val()),
+                    tipoLiquidacion: $('#pagoTipoLiquidacion').val(),
+                    comision: obtenerValorLimpio($('#pagoComision').val()),
+                    valor4x1000: obtenerValorLimpio($('#pagoValor4x1000').val()),
+                    conceptoDescProp: $('#pagoConceptoDescProp').val(),
+                    valorDescProp: obtenerValorLimpio($('#pagoValorDescProp').val()),
+                    netoPropietario: obtenerValorLimpio($('#pagoNetoPropietario').val()),
+                    fechaProp: $('#pagoFechaProp').val(),
+                    formaProp: $('#pagoFormaProp').val(),
+                    estadoProp: $('#pagoEstadoProp').val(),
+                    observaciones: $('#pagoObservaciones').val()
+                };
+
+                if(indexPago == -1) datosPagos.unshift(pagoObj);
+                else datosPagos[indexPago] = pagoObj;
+
+                guardarEnLocalStorage();
+                $('#modalNuevoPago').modal('hide');
+                cargarTablaPagos();
+                alert('¡Recibo y liquidación guardados con éxito!');
+            });
+
+            $('#btnGuardar').on('click', function() {
+                let index = $('#editIndex').val();
+                let rawValCanon = obtenerValorLimpio($('#valCanonNumerico').val());
+                let nuevoObj = {
+                    item: index == -1 ? datosBase.length + 1 : datosBase[index].item,
+                    contrato: $('#valContrato').val(),
+                    estudio: $('#valEstudio').val() || 'N/A',
+                    estado: $('#valEstado').val(),
+                    arrendatario: $('#valArrendatario').val(),
+                    cedulaArr: $('#valCedulaArr').val(),
+                    propietario: $('#valPropietario').val(),
+                    cedulaProp: $('#valCedulaProp').val() || '',
+                    titularConsignar: $('#valTitularConsignar').val() || $('#valPropietario').val() || '',
+                    cedulaTitular: $('#valCedulaTitular').val() || '',
+                    bancoProp: $('#valBancoProp').val() || '',
+                    cuentaProp: $('#valCuentaProp').val() || '',
+                    direccion: $('#valDireccion').val(),
+                    diaLimite: $('#valDiaLimite').val(),
+                    fechaIni: $('#valFechaIni').val(),
+                    fechaVto: $('#valFechaVto').val(),
+                    canon: "$ " + formatearMonedaInput(rawValCanon),
+                    rawCanon: rawValCanon
+                };
+
+                if(!nuevoObj.contrato || !nuevoObj.arrendatario || !nuevoObj.direccion) {
+                    alert('Complete los campos obligatorios.'); return;
+                }
+
+                if(index == -1) datosBase.push(nuevoObj);
+                else datosBase[index] = nuevoObj;
+
+                guardarEnLocalStorage();
+                $('#modalAdicionar').modal('hide');
+                aplicarFiltros();
+                alert('¡Contrato guardado con éxito!');
+            });
+        });
+
+        function renderizarTablaContratos(lista, total) {
+            let tbody = "";
+            $('#contadorContratos').text(total);
+            if(lista.length === 0) {
+                tbody = `<tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron contratos.</td></tr>`;
+            } else {
+                lista.forEach((item) => {
+                    let originalIndex = datosBase.indexOf(item);
+                    let badgeClass = item.estado === "Activo" ? "badge-status-active" : "badge-status-inactive";
+                    tbody += `
+                        <tr>
+                            <td><strong style="color: var(--brand-navy);">#${item.contrato}</strong></td>
+                            <td><span class="badge ${badgeClass}">${item.estado}</span></td>
+                            <td><strong class="text-dark">${item.arrendatario}</strong></td>
+                            <td>${item.direccion}</td>
+                            <td><span class="text-secondary">${item.propietario || 'N/A'}</span></td>
+                            <td class="fw-bold text-success">${item.canon}</td>
+                            <td><span class="badge bg-light text-dark border">Día ${item.diaLimite}</span></td>
+                            <td class="text-center">
+                                <button class="btn btn-outline-info btn-action" onclick="abrirModalDetalle(${originalIndex})" title="Ver Detalles"><i class="fas fa-eye"></i></button>
+                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditar(${originalIndex})" title="Editar Contrato"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-danger btn-action" onclick="eliminarContrato(${originalIndex})" title="Eliminar Contrato"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            $('#cuerpoTabla').html(tbody);
+        }
+
+        function renderizarControlesPaginacion(totalPaginas, totalRegistros, inicio, fin) {
+            let finReal = fin > totalRegistros ? totalRegistros : fin;
+            let inicioReal = totalRegistros === 0 ? 0 : inicio + 1;
+            $('#textoPaginacionInfo').text(`Mostrando ${inicioReal} a ${finReal} de ${totalRegistros} contratos`);
+
+            if($('#tamanioPagina').val() === "150") {
+                $('#paginacionControles').html('');
+                return;
+            }
+
+            let html = "";
+            for(let i=1; i<=totalPaginas; i++) {
+                let active = (i === paginaActual) ? "btn-luxury-primary" : "btn-outline-secondary";
+                html += `<button class="btn btn-sm ${active}" onclick="cambiarPagina(${i})">${i}</button>`;
+            }
+            $('#paginacionControles').html(html);
+        }
+
+        function cargarTablaPagos(lista = datosPagos) {
+            let tamanioVal = $('#tamanioPaginaPagos').val();
+            let tamanio = tamanioVal === "1000" ? lista.length : (parseInt(tamanioVal) || 10);
+            let totalRegistros = lista.length;
+            let totalPaginas = tamanioVal === "1000" ? 1 : (Math.ceil(totalRegistros / tamanio) || 1);
+
+            if (paginaActualPagos > totalPaginas) paginaActualPagos = totalPaginas;
+
+            let inicio = tamanioVal === "1000" ? 0 : (paginaActualPagos - 1) * tamanio;
+            let fin = tamanioVal === "1000" ? totalRegistros : inicio + tamanio;
+            let paginados = lista.slice(inicio, fin);
+
+            let tbody = "";
+            if (totalRegistros === 0) {
+                tbody = `<tr><td colspan="13" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
+            } else {
+                paginados.forEach((p) => {
+                    let originalIndex = datosPagos.indexOf(p);
+                    let badgeLiq = (p.tipoLiquidacion === 'anual') ? 'bg-warning text-dark' : ((p.tipoLiquidacion === 'no_aplica') ? 'bg-secondary text-white' : 'bg-info text-dark');
+                    let totalConsignadoNum = Number(p.totalConsignado) || 0;
+                    let netoPropNum = Number(p.netoPropietario) || 0;
+                    
+                    let badgeArrClass = (p.estadoArr === 'PENDIENTE') ? 'badge-status-pending' : 'badge-status-active';
+                    let badgePropClass = (p.estadoProp === 'PENDIENTE') ? 'badge-status-pending' : 'badge-status-active';
+
+                    // Búsqueda del día límite correspondiente
+                    let matchContrato = datosBase.find(c => c.contrato === p.contrato);
+                    let diaLimiteVal = matchContrato ? matchContrato.diaLimite : '5';
+
+                    tbody += `
+                        <tr>
+                            <td><strong>${p.arrendatario}</strong></td>
+                            <td><strong>#${p.contrato}</strong></td>
+                            <td><span class="badge bg-light text-dark border">Día ${diaLimiteVal}</span></td>
+                            <td><span class="badge bg-light text-dark border">${p.formaPago || 'AV VILLAS'}</span></td>
+                            <td><span class="badge ${badgeArrClass}">${p.estadoArr || 'CONFIRMADO'}</span></td>
+                            <td><strong style="color: var(--brand-navy);">${p.propietario || 'N/A'}</strong></td>
+                            <td>${p.fechaPago}</td>
+                            <td>${p.ano} / ${p.mes}</td>
+                            <td class="fw-bold text-success">$ ${totalConsignadoNum.toLocaleString()}</td>
+                            <td class="fw-bold text-primary">$ ${netoPropNum.toLocaleString()} <span class="badge ${badgeLiq} ms-1" style="font-size:0.65rem;">${(p.tipoLiquidacion || 'mensual').replace('_', ' ').toUpperCase()}</span></td>
+                            <td>${p.fechaProp || '<span class="text-muted">Pendiente</span>'}</td>
+                            <td><span class="badge ${badgePropClass}">${p.estadoProp || 'CONFIRMADO'}</span></td>
+                            <td class="text-center">
+                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditarPago(${originalIndex})" title="Editar Recibo"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-primary btn-action" onclick="imprimirComprobante(${originalIndex})" title="Imprimir Comprobante Propietario"><i class="fas fa-print"></i></button>
+                                <button class="btn btn-outline-danger btn-action" onclick="eliminarPago(${originalIndex})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            $('#cuerpoTablaPagos').html(tbody);
+            renderizarControlesPaginacionPagos(totalPaginas, totalRegistros, inicio, fin);
+        }
+
+        function renderizarControlesPaginacionPagos(totalPaginas, totalRegistros, inicio, fin) {
+            let finReal = fin > totalRegistros ? totalRegistros : fin;
+            let inicioReal = totalRegistros === 0 ? 0 : inicio + 1;
+            $('#textoPaginacionPagosInfo').text(`Mostrando ${inicioReal} a ${finReal} de ${totalRegistros} recibos`);
+
+            if ($('#tamanioPaginaPagos').val() === "1000") {
+                $('#paginacionPagosControles').html('');
+                return;
+            }
+
+            let html = "";
+            for (let i = 1; i <= totalPaginas; i++) {
+                let active = (i === paginaActualPagos) ? "btn-luxury-primary" : "btn-outline-secondary";
+                html += `<button class="btn btn-sm ${active}" onclick="cambiarPaginaPagos(${i})">${i}</button>`;
+            }
+            $('#paginacionPagosControles').html(html);
+        }
+
+        window.cambiarPaginaPagos = function(p) {
+            paginaActualPagos = p;
+            filtrarYMostrarPagos();
+        };
+
+        function filtrarYMostrarPagos() {
+            let val = $('#filtroPagosGlobal').val().toLowerCase();
+            let diaDesde = parseInt($('#filtroDiaDesde').val());
+            let diaHasta = parseInt($('#filtroDiaHasta').val());
+            let mes = $('#filtroMes').val();
+            let estado = $('#filtroEstadoPago').val();
+
+            let filtrados = datosPagos.filter(p => {
+                let textoMatch = `${p.arrendatario} ${p.cedulaArr} ${p.propietario} ${p.cedulaProp} ${p.titularConsignar} ${p.cedulaTitular} ${p.contrato} ${p.formaPago} ${p.formaProp}`.toLowerCase().includes(val);
+                let mMatch = mes ? p.mes === mes : true;
+                let eMatch = estado ? (p.estadoArr === estado) : true;
+
+                // Validación del Rango del Día Límite
+                let dMatch = true;
+                let matchContrato = datosBase.find(c => c.contrato === p.contrato);
+                let diaLimiteVal = matchContrato ? parseInt(matchContrato.diaLimite) : 5;
+
+                if (!isNaN(diaDesde)) {
+                    dMatch = dMatch && (diaLimiteVal >= diaDesde);
+                }
+                if (!isNaN(diaHasta)) {
+                    dMatch = dMatch && (diaLimiteVal <= diaHasta);
+                }
+
+                return textoMatch && mMatch && eMatch && dMatch;
+            });
+            cargarTablaPagos(filtrados);
+        }
+
+        function abrirModalDetalle(index) {
+            let item = datosBase[index];
+            $('#detContrato').text(item.contrato || '-');
+            $('#detEstudio').text(item.estudio || '-');
+            $('#detEstado').html(`<span class="badge ${item.estado === 'Activo' ? 'badge-status-active' : 'badge-status-inactive'}">${item.estado}</span>`);
+            $('#detFechaIni').text(item.fechaIni || '-');
+            $('#detFechaVto').text(item.fechaVto || '-');
+            $('#detFechaAviso').text(item.fechaAviso || '-');
+            $('#detArrendatario').text(item.arrendatario || '-');
+            $('#detCedulaArr').text(item.cedulaArr || 'N/A');
+            $('#detCelArr').text(item.celArr || 'N/A');
+            $('#detPropietario').text(item.propietario || '-');
+            $('#detCedulaProp').text(item.cedulaProp || 'N/A');
+            $('#detTitularConsignar').text(item.titularConsignar || item.propietario || '-');
+            $('#detCedulaTitular').text(item.cedulaTitular || item.cedulaProp || 'N/A');
+            $('#detBancoProp').text(item.bancoProp || 'No especificado');
+            $('#detCuentaProp').text(item.cuentaProp || 'No especificado');
+            $('#detDireccion').text(item.direccion || '-');
+            $('#modalVerDetalle').modal('show');
+        }
+
+        function abrirModalEditar(index) {
+            let item = datosBase[index];
+            $('#editIndex').val(index);
+            $('#valContrato').val(item.contrato);
+            $('#valEstudio').val(item.estudio || '');
+            $('#valEstado').val(item.estado || 'Activo');
+            $('#valArrendatario').val(item.arrendatario || '');
+            $('#valCedulaArr').val(item.cedulaArr || '');
+            $('#valPropietario').val(item.propietario || '');
+            $('#valCedulaProp').val(item.cedulaProp || '');
+            $('#valTitularConsignar').val(item.titularConsignar || '');
+            $('#valCedulaTitular').val(item.cedulaTitular || '');
+            $('#valBancoProp').val(item.bancoProp || '');
+            $('#valCuentaProp').val(item.cuentaProp || '');
+            $('#valDireccion').val(item.direccion || '');
+            $('#valCanonNumerico').val(formatearMonedaInput(item.rawCanon || 0));
+            $('#valDiaLimite').val(item.diaLimite || '5');
+            $('#valFechaIni').val(item.fechaIni || '');
+            $('#valFechaVto').val(item.fechaVto || '');
+
+            $('#modalAdicionarLabel').html('<i class="fas fa-edit me-2" style="color: var(--brand-gold);"></i>Modificar Contrato');
+            $('#modalAdicionar').modal('show');
+        }
+
+        function eliminarContrato(index) {
+            if(confirm('¿Está seguro de eliminar este contrato?')) {
+                datosBase.splice(index, 1);
+                guardarEnLocalStorage();
+                aplicarFiltros();
+            }
+        }
+
+        function abrirModalEditarPago(index) {
+            let p = datosPagos[index];
+            $('#editIndexPago').val(index);
+            $('#inputBusquedaCedula').val(p.arrendatario);
+            $('#pagoCedulaArr').val(p.cedulaArr || '');
+            $('#pagoPropietario').val(p.propietario || '');
+            $('#pagoCedulaProp').val(p.cedulaProp || '');
+            $('#pagoTitularConsignar').val(p.titularConsignar || p.propietario || '');
+            $('#pagoCedulaTitular').val(p.cedulaTitular || p.cedulaProp || '');
+            $('#pagoBancoProp').val(p.bancoProp || '');
+            $('#pagoCuentaProp').val(p.cuentaProp || '');
+            $('#pagoContratoAsociado').val(p.contrato);
+            $('#pagoContratoDisplay').val("#" + p.contrato);
+            $('#pagoDireccionInmueble').val(p.direccion || '');
+            $('#pagoFechaPago').val(p.fechaPago || '');
+            $('#pagoMes').val(p.mes || 'Agosto');
+            $('#pagoAno').val(p.ano || 2026);
+            $('#pagoFormaPago').val(p.formaPago || 'AV VILLAS');
+            $('#pagoEstadoArr').val(p.estadoArr || 'CONFIRMADO');
+            $('#pagoTipoLiquidacion').val(p.tipoLiquidacion || 'mensual');
+            $('#aplicar4x1000').prop('checked', (p.valor4x1000 > 0));
+            $('#pagoCanon').val(formatearMonedaInput(p.canon || 0));
+            $('#pagoConceptoDescArr').val(p.conceptoDescArr || '');
+            $('#pagoDescuento').val(formatearMonedaInput(p.descuento || 0));
+            $('#pagoTotalConsignado').val(formatearMonedaInput(p.totalConsignado || 0));
+            $('#pagoComision').val(formatearMonedaInput(p.comision || 0));
+            $('#pagoValor4x1000').val("$ " + formatearMonedaInput(p.valor4x1000 || 0));
+            $('#pagoConceptoDescProp').val(p.conceptoDescProp || '');
+            $('#pagoValorDescProp').val(formatearMonedaInput(p.valorDescProp || 0));
+            $('#pagoFechaProp').val(p.fechaProp || '');
+            $('#pagoFormaProp').val(p.formaProp || 'AV VILLAS');
+            $('#pagoEstadoProp').val(p.estadoProp || 'CONFIRMADO');
+            $('#pagoObservaciones').val(p.observaciones || '');
+
+            $('#modalPagoTitulo').html('<i class="fas fa-edit me-2" style="color: var(--brand-gold);"></i>Modificar Recibo y Liquidación Propietario');
+            $('#modalNuevoPago').modal('show');
+            calcularLiquidacionPropietario();
+        }
+
+        function eliminarPago(index) {
+            if(confirm('¿Está seguro de eliminar este registro?')) {
+                datosPagos.splice(index, 1);
+                guardarEnLocalStorage();
+                cargarTablaPagos();
+            }
+        }
+
+        function imprimirComprobante(index) {
+            let p = datosPagos[index];
+            let descPropHtml = p.valorDescProp > 0 
+                ? `<tr><td>Descuento Propietario (${p.conceptoDescProp || 'Concepto Varios'})</td><td class="text-end text-danger">- $ ${(Number(p.valorDescProp)||0).toLocaleString()}</td></tr>`
+                : '';
+
+            let descArrHtml = p.descuento > 0
+                ? `<tr><td>Descuento Arrendatario (${p.conceptoDescArr || 'Descuento Aplicado'})</td><td class="text-end text-danger">- $ ${(Number(p.descuento)||0).toLocaleString()}</td></tr>`
+                : '';
+
+            let w = window.open('', '_blank', 'width=780,height=720');
+            w.document.write(`
+                <html>
+                <head>
+                    <title>Comprobante Propietario - Bienes Raíces White</title>
+                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600&display=swap" rel="stylesheet">
+                    <style>
+                        body { font-family: 'Plus Jakarta Sans', sans-serif; color: #1E293B; }
+                        h4 { font-family: 'Cormorant Garamond', serif; font-weight: 700; letter-spacing: 1px; color: #0B132B; }
+                        .header-line { border-bottom: 2px solid #C5A059; margin-bottom: 20px; }
+                    </style>
+                </head>
+                <body class="p-4" style="font-size: 0.9rem;">
+                    <div class="text-center mb-3">
+                        <h4 class="mb-1">GRUPO EMPRESARIAL BIENES RAÍCES WHITE</h4>
+                        <p class="text-muted small mb-0 fw-bold" style="letter-spacing: 0.5px;">COMPROBANTE DE PAGO Y LIQUIDACIÓN A PROPIETARIO</p>
+                    </div>
+                    <div class="header-line"></div>
+                    <div class="row g-2 mb-4 bg-light p-3 rounded-3" style="border: 1px solid #E2E8F0;">
+                        <div class="col-6"><strong>Propietario Inmueble:</strong> ${p.propietario || 'N/A'}</div>
+                        <div class="col-6"><strong>Cédula / NIT Prop.:</strong> ${p.cedulaProp || 'N/A'}</div>
+                        <div class="col-6"><strong>Consignar a (Beneficiario):</strong> ${p.titularConsignar || p.propietario || 'N/A'}</div>
+                        <div class="col-6"><strong>Cédula / NIT Titular:</strong> ${p.cedulaTitular || p.cedulaProp || 'N/A'}</div>
+                        <div class="col-6"><strong>Banco Destino:</strong> ${p.bancoProp || 'No especificado'}</div>
+                        <div class="col-6"><strong>Número de Cuenta:</strong> ${p.cuentaProp || 'No especificada'}</div>
+                        <div class="col-6"><strong>Contrato:</strong> #${p.contrato}</div>
+                        <div class="col-6"><strong>Arrendatario:</strong> ${p.arrendatario}</div>
+                        <div class="col-6"><strong>Período:</strong> ${p.ano} / ${p.mes} (${(p.tipoLiquidacion || 'mensual').replace('_', ' ').toUpperCase()})</div>
+                        <div class="col-6"><strong>Inmueble:</strong> ${p.direccion || 'N/A'}</div>
+                    </div>
+                    <table class="table table-bordered table-sm mb-4">
+                        <thead class="table-light">
+                            <tr><th>Concepto</th><th class="text-end">Monto</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Canon Base Arriendo Recaudado</td><td class="text-end fw-bold">$ ${(Number(p.canon)||0).toLocaleString()}</td></tr>
+                            ${descArrHtml}
+                            <tr><td>Comisión Administración (10%)</td><td class="text-end text-danger">- $ ${(Number(p.comision)||0).toLocaleString()}</td></tr>
+                            <tr><td>Deducción GMF (4x1000)</td><td class="text-end text-danger">- $ ${(Number(p.valor4x1000)||0).toLocaleString()}</td></tr>
+                            ${descPropHtml}
+                            <tr class="table-primary fw-bold" style="background-color: #0B132B !important; color: #FFFFFF !important;">
+                                <td>NETO PAGADO / CONSIGNADO AL PROPIETARIO</td>
+                                <td class="text-end text-warning" style="color: #E6C687 !important;">$ ${(Number(p.netoPropietario)||0).toLocaleString()}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="small mb-4">
+                        <p class="mb-1"><strong>Medio / Estado Recibo Arr.:</strong> ${p.formaPago || 'AV VILLAS'} (${p.estadoArr || 'CONFIRMADO'})</p>
+                        <p class="mb-1"><strong>Fecha Pago Propietario:</strong> ${p.fechaProp || 'Pendiente'}</p>
+                        <p class="mb-1"><strong>Medio / Estado Pago Prop.:</strong> ${p.formaProp || 'AV VILLAS'} (${p.estadoProp || 'CONFIRMADO'})</p>
+                        <p class="mb-1"><strong>Observaciones:</strong> ${p.observaciones || 'Ninguna'}</p>
+                    </div>
+                    <div class="text-center mt-5 pt-4">
+                        <p class="mb-0 border-top d-inline-block px-5 pt-2 fw-bold">Firma Autorizada / Sello Grupo Empresarial BRW</p>
+                    </div>
+                    <script>window.onload = function() { window.print(); window.close(); }<\/script>
+                </body>
+                </html>
+            `);
+            w.document.close();
+        }
+
+        function prepararNuevoPago() {
+            $('#editIndexPago').val('-1');
+            $('#formPago')[0].reset();
+            $('#inputBusquedaCedula').val('');
+            $('#pagoCedulaArr').val('');
+            $('#pagoContratoAsociado').val('');
+            $('#pagoContratoDisplay').val('');
+            $('#pagoPropietario').val('');
+            $('#pagoCedulaProp').val('');
+            $('#pagoTitularConsignar').val('');
+            $('#pagoCedulaTitular').val('');
+            $('#pagoBancoProp').val('');
+            $('#pagoCuentaProp').val('');
+            $('#pagoDireccionInmueble').val('');
+            $('#pagoCanon').val('');
+            $('#pagoConceptoDescArr').val('');
+            $('#pagoDescuento').val('0');
+            $('#pagoTotalConsignado').val('');
+            $('#pagoComision').val('');
+            $('#pagoValor4x1000').val('$ 0');
+            $('#pagoConceptoDescProp').val('');
+            $('#pagoValorDescProp').val('0');
+            $('#pagoNetoPropietario').val('');
+            $('#pagoFormaPago').val('AV VILLAS');
+            $('#pagoEstadoArr').val('CONFIRMADO');
+            $('#pagoFormaProp').val('AV VILLAS');
+            $('#pagoEstadoProp').val('CONFIRMADO');
+            $('#aplicar4x1000').prop('checked', false);
+            $('#modalPagoTitulo').html('<i class="fas fa-receipt me-2" style="color: var(--brand-gold);"></i>Registrar Recibo de Caja y Liquidación Propietario');
+        }
+
+        function prepararNuevoContrato() {
+            $('#editIndex').val('-1');
+            $('#formContrato')[0].reset();
+            // Con la lista vacía (primera vez) Math.max(...[]) da -Infinity; se protege con 0
+            let numerosContrato = datosBase.map(c => parseInt(c.contrato) || 0);
+            let maxContrato = numerosContrato.length ? Math.max(...numerosContrato) : 0;
+            $('#valContrato').val(maxContrato + 1);
+            $('#modalAdicionarLabel').html('<i class="fas fa-file-signature me-2" style="color: var(--brand-gold);"></i>Adicionar Contrato');
+        }
+
+        function exportarExcelContratosCompleto() {
+            if (!datosBase || datosBase.length === 0) {
+                alert("No hay registros de contratos para exportar.");
+                return;
+            }
+
+            let csv = "\uFEFFItem;No. Contrato;No. Estudio;Estado;Arrendatario;Cédula/NIT Arrendatario;Celular Arrendatario;Correo Arrendatario;Propietario;Cédula Propietario;Titular a Consignar;Cédula Titular;Banco Propietario;Cuenta Propietario;Dirección Inmueble;Valor Canon;Día Límite;Fecha Inicial;Fecha Vencimiento\n";
+            
+            datosBase.forEach(item => {
+                let fila = [
+                    item.item || '',
+                    item.contrato || '',
+                    item.estudio || '',
+                    item.estado || '',
+                    item.arrendatario || '',
+                    item.cedulaArr || '',
+                    item.celArr || '',
+                    item.correoArr || '',
+                    item.propietario || '',
+                    item.cedulaProp || '',
+                    item.titularConsignar || '',
+                    item.cedulaTitular || '',
+                    item.bancoProp || '',
+                    item.cuentaProp || '',
+                    item.direccion || '',
+                    item.canon || '',
+                    item.diaLimite || '',
+                    item.fechaIni || '',
+                    item.fechaVto || ''
+                ].map(campo => `"${String(campo).replace(/"/g, '""')}"`).join(";");
+
+                csv += fila + "\n";
+            });
+
+            let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Reporte_Completo_Contratos_BRW_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportarExcelPagos() {
+            if (!datosPagos || datosPagos.length === 0) {
+                alert("No hay registros de pagos para exportar.");
+                return;
+            }
+
+            let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
+
+            datosPagos.forEach(p => {
+                let matchContrato = datosBase.find(c => c.contrato === p.contrato);
+                let diaLimiteVal = matchContrato ? matchContrato.diaLimite : '5';
+
+                let fila = [
+                    p.arrendatario || '',
+                    p.cedulaArr || '',
+                    p.contrato || '',
+                    diaLimiteVal,
+                    p.formaPago || 'AV VILLAS',
+                    p.estadoArr || 'CONFIRMADO',
+                    p.propietario || '',
+                    p.cedulaProp || '',
+                    p.titularConsignar || '',
+                    p.cedulaTitular || '',
+                    p.bancoProp || '',
+                    p.cuentaProp || '',
+                    p.direccion || '',
+                    p.fechaPago || '',
+                    p.ano || '',
+                    p.mes || '',
+                    p.canon || 0,
+                    p.conceptoDescArr || '',
+                    p.descuento || 0,
+                    p.totalConsignado || 0,
+                    p.tipoLiquidacion || 'mensual',
+                    p.comision || 0,
+                    p.valor4x1000 || 0,
+                    p.conceptoDescProp || '',
+                    p.valorDescProp || 0,
+                    p.netoPropietario || 0,
+                    p.fechaProp || '',
+                    p.formaProp || '',
+                    p.estadoProp || 'CONFIRMADO',
+                    p.observaciones || ''
+                ].map(campo => `"${String(campo).replace(/"/g, '""')}"`).join(";");
+
+                csv += fila + "\n";
+            });
+
+            let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Reporte_Completo_Pagos_y_Descuentos_BRW_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
