@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node test8.js)",
+      "Bash(node debug8.js)",
+      "Bash(node -e ' *)",
+      "Bash(rm -f extracted_temp.js)",
+      "Bash(cp \"45.BD ARRIENDOS-RC-CE.HTML\" \"index.html\")"
+    ]
+  }
+}

@@ -421,18 +421,14 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Día Límite:</label>
-                            <select id="filtroDiaLimite" class="form-select">
-                                <option value="">-- Todos --</option>
-                                <option value="1">Día 1</option><option value="5">Día 5</option><option value="10">Día 10</option>
-                                <option value="15">Día 15</option><option value="20">Día 20</option><option value="25">Día 25</option>
-                                <option value="30">Día 30</option>
-                            </select>
+                            <input type="number" id="filtroDiaLimite" class="form-control" placeholder="Ej: 5" min="1" max="31">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Concepto Fecha:</label>
                             <select id="conceptoFecha" class="form-select">
                                 <option value="vto" selected>Fecha Vencimiento</option>
                                 <option value="ini">Fecha Inicial</option>
+                                <option value="aviso">Fecha Aviso Vencimiento</option>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -560,6 +556,7 @@
                                     <tr>
                                         <th>Arrendatario</th>
                                         <th>Contrato</th>
+                                        <th>No. Factura</th>
                                         <th>Día Lím.</th>
                                         <th>Medio Pago Arr.</th>
                                         <th>Estado Arr.</th>
@@ -623,6 +620,14 @@
                             <div class="col-md-4">
                                 <label class="form-label">Inmueble / Dirección</label>
                                 <input type="text" class="form-control bg-light" id="pagoDireccionInmueble" readonly>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Número de Factura</label>
+                                <input type="text" class="form-control" id="pagoNumeroFactura" placeholder="Ej: FV-2-1425">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Fecha de Factura</label>
+                                <input type="date" class="form-control" id="pagoFechaFactura">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Fecha de Recibo *</label>
@@ -813,21 +818,52 @@
                             <div class="col-md-4"><strong>F. Inicial:</strong> <span id="detFechaIni"></span></div>
                             <div class="col-md-4"><strong>F. Vencimiento:</strong> <span id="detFechaVto"></span></div>
                             <div class="col-md-4"><strong>F. Aviso:</strong> <span id="detFechaAviso"></span></div>
+                            <div class="col-md-4"><strong>Frecuencia de Pago:</strong> <span id="detFrecuenciaPago"></span></div>
+                            <div class="col-md-4"><strong>Próxima Renovación:</strong> <span id="detFechaRenovacion"></span></div>
+                            <div class="col-md-4"><strong>Valor Renovación:</strong> <span id="detValorRenovacion"></span></div>
                         </div>
                     </div>
-                    <div class="card p-3 border-0 shadow-sm" style="border-radius: 14px;">
-                        <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);">Partes Involucradas y Datos de Banco</h6>
+                    <div class="card p-3 mb-3 border-0 shadow-sm" style="border-radius: 14px;">
+                        <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);">Arrendatario</h6>
                         <div class="row g-2 small">
-                            <div class="col-md-4"><strong>Arrendatario:</strong> <span id="detArrendatario"></span></div>
-                            <div class="col-md-4"><strong>Id Arr:</strong> <span id="detCedulaArr"></span></div>
-                            <div class="col-md-4"><strong>Celular Arr:</strong> <span id="detCelArr"></span></div>
-                            <div class="col-md-4"><strong>Propietario:</strong> <span id="detPropietario"></span></div>
-                            <div class="col-md-4"><strong>Cédula Propietario:</strong> <span id="detCedulaProp"></span></div>
-                            <div class="col-md-4"><strong>Titular a Consignar:</strong> <span id="detTitularConsignar"></span></div>
+                            <div class="col-md-4"><strong>Nombre:</strong> <span id="detArrendatario"></span></div>
+                            <div class="col-md-4"><strong>Cédula:</strong> <span id="detCedulaArr"></span></div>
+                            <div class="col-md-4"><strong>Celular:</strong> <span id="detCelArr"></span></div>
+                            <div class="col-md-12"><strong>Correo:</strong> <span id="detCorreoArr"></span></div>
+                        </div>
+                    </div>
+                    <div class="card p-3 mb-3 border-0 shadow-sm" style="border-radius: 14px;">
+                        <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);">Codeudor</h6>
+                        <div class="row g-2 small">
+                            <div class="col-md-4"><strong>Nombre:</strong> <span id="detCodeudor"></span></div>
+                            <div class="col-md-4"><strong>Cédula:</strong> <span id="detCedulaCodeudor"></span></div>
+                            <div class="col-md-4"><strong>Celular:</strong> <span id="detCelCodeudor"></span></div>
+                            <div class="col-md-12"><strong>Correo:</strong> <span id="detCorreoCodeudor"></span></div>
+                        </div>
+                    </div>
+                    <div class="card p-3 mb-3 border-0 shadow-sm" style="border-radius: 14px;">
+                        <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);">Propietario y Datos de Banco</h6>
+                        <div class="row g-2 small">
+                            <div class="col-md-4"><strong>Nombre:</strong> <span id="detPropietario"></span></div>
+                            <div class="col-md-4"><strong>Cédula:</strong> <span id="detCedulaProp"></span></div>
+                            <div class="col-md-4"><strong>Celular:</strong> <span id="detCelProp"></span></div>
+                            <div class="col-md-6"><strong>Correo:</strong> <span id="detCorreoProp"></span></div>
+                            <div class="col-md-6"><strong>Titular a Consignar:</strong> <span id="detTitularConsignar"></span></div>
                             <div class="col-md-4"><strong>Cédula Titular:</strong> <span id="detCedulaTitular"></span></div>
                             <div class="col-md-4"><strong>Banco:</strong> <span id="detBancoProp"></span></div>
                             <div class="col-md-4"><strong>No. Cuenta:</strong> <span id="detCuentaProp"></span></div>
                             <div class="col-md-12"><strong>Inmueble / Dirección:</strong> <span id="detDireccion"></span></div>
+                        </div>
+                    </div>
+                    <div class="card p-3 border-0 shadow-sm" style="border-radius: 14px;">
+                        <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);"><i class="fas fa-clock-rotate-left me-1"></i>Historial de Pagos del Inmueble</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 small">
+                                <thead>
+                                    <tr><th>Período</th><th>Fecha Pago</th><th>Estado Arr.</th><th class="text-end">Total Recaudado</th><th class="text-end">Neto Propietario</th><th>Estado Prop.</th></tr>
+                                </thead>
+                                <tbody id="detHistorialPagos"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -849,16 +885,31 @@
                 <div class="modal-body p-4">
                     <form id="formContrato">
                         <input type="hidden" id="editIndex" value="-1">
-                        <div class="row g-3">
-                            <div class="col-md-4"><label class="form-label">No. Contrato</label><input type="text" class="form-control bg-light" id="valContrato" readonly></div>
-                            <div class="col-md-4"><label class="form-label">No. Estudio</label><input type="text" class="form-control" id="valEstudio"></div>
-                            <div class="col-md-4"><label class="form-label">Estado</label><select class="form-select" id="valEstado"><option value="Activo">Activo</option><option value="Retirado">Retirado</option></select></div>
-                            <div class="col-md-4"><label class="form-label">Arrendatario (Nombre)</label><input type="text" class="form-control" id="valArrendatario" required></div>
-                            <div class="col-md-4"><label class="form-label">Cédula o NIT Arrendatario</label><input type="text" class="form-control" id="valCedulaArr"></div>
-                            <div class="col-md-4"><label class="form-label">Nombre Propietario</label><input type="text" class="form-control" id="valPropietario"></div>
-                            <div class="col-md-4"><label class="form-label">Cédula o NIT Propietario</label><input type="text" class="form-control" id="valCedulaProp"></div>
-                            <div class="col-md-4"><label class="form-label">Nombre Titular (Consignar)</label><input type="text" class="form-control" id="valTitularConsignar"></div>
-                            <div class="col-md-4"><label class="form-label">Cédula o NIT Titular</label><input type="text" class="form-control" id="valCedulaTitular"></div>
+
+                        <div class="section-header-modal"><i class="fas fa-user me-1"></i> 1. Datos del Arrendatario</div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6"><label class="form-label">Arrendatario (Nombre)</label><input type="text" class="form-control" id="valArrendatario" required></div>
+                            <div class="col-md-6"><label class="form-label">Cédula o NIT Arrendatario</label><input type="text" class="form-control" id="valCedulaArr"></div>
+                            <div class="col-md-6"><label class="form-label">Celular Arrendatario</label><input type="tel" class="form-control" id="valCelArr"></div>
+                            <div class="col-md-6"><label class="form-label">Correo Arrendatario</label><input type="email" class="form-control" id="valCorreoArr" placeholder="correo@ejemplo.com"></div>
+                        </div>
+
+                        <div class="section-header-modal"><i class="fas fa-user-shield me-1"></i> 2. Datos del Codeudor</div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6"><label class="form-label">Codeudor (Nombre)</label><input type="text" class="form-control" id="valCodeudor"></div>
+                            <div class="col-md-6"><label class="form-label">Cédula o NIT Codeudor</label><input type="text" class="form-control" id="valCedulaCodeudor"></div>
+                            <div class="col-md-6"><label class="form-label">Celular Codeudor</label><input type="tel" class="form-control" id="valCelCodeudor"></div>
+                            <div class="col-md-6"><label class="form-label">Correo Codeudor</label><input type="email" class="form-control" id="valCorreoCodeudor" placeholder="correo@ejemplo.com"></div>
+                        </div>
+
+                        <div class="section-header-modal"><i class="fas fa-building-user me-1"></i> 3. Datos del Propietario y Banco</div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6"><label class="form-label">Nombre Propietario</label><input type="text" class="form-control" id="valPropietario"></div>
+                            <div class="col-md-6"><label class="form-label">Cédula o NIT Propietario</label><input type="text" class="form-control" id="valCedulaProp"></div>
+                            <div class="col-md-6"><label class="form-label">Celular Propietario</label><input type="tel" class="form-control" id="valCelProp"></div>
+                            <div class="col-md-6"><label class="form-label">Correo Propietario</label><input type="email" class="form-control" id="valCorreoProp" placeholder="correo@ejemplo.com"></div>
+                            <div class="col-md-6"><label class="form-label">Nombre Titular (Consignar)</label><input type="text" class="form-control" id="valTitularConsignar"></div>
+                            <div class="col-md-6"><label class="form-label">Cédula o NIT Titular</label><input type="text" class="form-control" id="valCedulaTitular"></div>
                             <div class="col-md-6">
                                 <label class="form-label">Banco del Propietario</label>
                                 <select class="form-select" id="valBancoProp">
@@ -884,11 +935,28 @@
                                 </select>
                             </div>
                             <div class="col-md-6"><label class="form-label">Número de Cuenta</label><input type="text" class="form-control" id="valCuentaProp"></div>
+                        </div>
+
+                        <div class="section-header-modal"><i class="fas fa-house me-1"></i> 4. Datos del Inmueble y del Contrato</div>
+                        <div class="row g-3">
+                            <div class="col-md-4"><label class="form-label">No. Contrato</label><input type="text" class="form-control bg-light" id="valContrato" readonly></div>
+                            <div class="col-md-4"><label class="form-label">No. Estudio</label><input type="text" class="form-control" id="valEstudio"></div>
+                            <div class="col-md-4"><label class="form-label">Estado</label><select class="form-select" id="valEstado"><option value="Activo">Activo</option><option value="Retirado">Retirado</option></select></div>
                             <div class="col-md-6"><label class="form-label">Dirección Inmueble</label><input type="text" class="form-control" id="valDireccion" required></div>
                             <div class="col-md-6"><label class="form-label">Canon ($)</label><input type="text" class="form-control" id="valCanonNumerico" required oninput="formatearEntradaMoneda(this)"></div>
                             <div class="col-md-4"><label class="form-label">Día Límite</label><input type="number" class="form-control" id="valDiaLimite" value="5" min="1" max="31"></div>
                             <div class="col-md-4"><label class="form-label">Fecha Inicial</label><input type="date" class="form-control" id="valFechaIni" onchange="calcularVencimientoDinamico()"></div>
                             <div class="col-md-4"><label class="form-label">Fecha Vencimiento</label><input type="date" class="form-control bg-light" id="valFechaVto" readonly></div>
+                            <div class="col-md-4"><label class="form-label">Fecha Aviso Vencimiento</label><input type="date" class="form-control bg-light" id="valFechaAviso" readonly title="Se calcula automáticamente: 90 días antes del vencimiento"></div>
+                            <div class="col-md-4">
+                                <label class="form-label">Frecuencia de Pago</label>
+                                <select class="form-select" id="valFrecuenciaPago">
+                                    <option value="Mensual">Mensual</option>
+                                    <option value="Anual">Anual</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4"><label class="form-label">Fecha Próxima Renovación</label><input type="date" class="form-control" id="valFechaRenovacion"></div>
+                            <div class="col-md-4"><label class="form-label">Valor Renovación ($)</label><input type="text" class="form-control" id="valValorRenovacion" placeholder="Nuevo canon al renovar" oninput="formatearEntradaMoneda(this)"></div>
                         </div>
                     </form>
                 </div>
@@ -943,6 +1011,16 @@
         let datosBase = JSON.parse(localStorage.getItem('brw_datosBase')) || datosBaseIniciales;
         let datosPagosRaw = JSON.parse(localStorage.getItem('brw_datosPagos_v10')) || JSON.parse(localStorage.getItem('brw_datosPagos_v9')) || datosPagosIniciales;
 
+        // Migración: contratos guardados antes de existir "Fecha Aviso Vencimiento"
+        // no tienen ese campo. Se calcula aquí (90 días antes del vencimiento) para
+        // que el filtro "Concepto Fecha: Fecha Aviso Vencimiento" funcione sin
+        // necesidad de volver a editar cada contrato manualmente.
+        datosBase.forEach(item => {
+            if (!item.fechaAviso && item.fechaVto) {
+                item.fechaAviso = calcularFechaAviso(item.fechaVto);
+            }
+        });
+
         // Normaliza los pagos leídos de localStorage y recalcula sus valores derivados
         // (por si el registro es antiguo o le faltan campos), usando las mismas fórmulas
         // que calcularLiquidacionPropietario():
@@ -981,6 +1059,8 @@
                 cedulaTitular: p.cedulaTitular || "",
                 bancoProp: p.bancoProp || "",
                 cuentaProp: p.cuentaProp || "",
+                numeroFactura: p.numeroFactura || "",
+                fechaFactura: p.fechaFactura || "",
                 fechaPago: p.fechaPago || '2026-01-01',
                 ano: (p.ano || 2026).toString(),
                 mes: p.mes || 'Enero',
@@ -1345,13 +1425,25 @@
             $('#pagoNetoPropietario').val(netoPropietario >= 0 ? formatearMonedaInput(Math.round(netoPropietario)) : "0");
         }
 
+        // Calcula la Fecha de Aviso de Vencimiento: 90 días (3 meses) antes del
+        // vencimiento del contrato, plazo habitual de preaviso para renovación o
+        // terminación de un arriendo. Recibe una fecha ISO (AAAA-MM-DD) y devuelve otra.
+        function calcularFechaAviso(fechaVtoISO) {
+            if (!fechaVtoISO) return '';
+            let d = new Date(fechaVtoISO);
+            d.setDate(d.getDate() - 90);
+            return d.toISOString().split('T')[0];
+        }
+
         function calcularVencimientoDinamico() {
             let fechaIni = $('#valFechaIni').val();
             if(fechaIni) {
                 let d = new Date(fechaIni);
                 d.setFullYear(d.getFullYear() + 1);
                 d.setDate(d.getDate() - 1);
-                $('#valFechaVto').val(d.toISOString().split('T')[0]);
+                let fechaVto = d.toISOString().split('T')[0];
+                $('#valFechaVto').val(fechaVto);
+                $('#valFechaAviso').val(calcularFechaAviso(fechaVto));
             }
         }
 
@@ -1383,7 +1475,7 @@
                     let matchEstado = estadoSel ? (item.estado.toLowerCase() === estadoSel.toLowerCase()) : true;
                     let matchDia = diaSel ? (item.diaLimite.toString() === diaSel.toString()) : true;
                     
-                    let fechaAProbar = concepto === 'ini' ? item.fechaIni : item.fechaVto;
+                    let fechaAProbar = concepto === 'ini' ? item.fechaIni : (concepto === 'aviso' ? item.fechaAviso : item.fechaVto);
                     let matchFechas = true;
                     if(minFecha && fechaAProbar) matchFechas = matchFechas && (fechaAProbar >= minFecha);
                     if(maxFecha && fechaAProbar) matchFechas = matchFechas && (fechaAProbar <= maxFecha);
@@ -1423,7 +1515,7 @@
             }
 
             $('#btnBuscarContratos').on('click', aplicarFiltros);
-            $('#filtroGlobal').on('keyup', function(e) { if (e.key === 'Enter') aplicarFiltros(); });
+            $('#filtroGlobal, #filtroDiaLimite').on('keyup', function(e) { if (e.key === 'Enter') aplicarFiltros(); });
             $('#filtroEstado, #filtroDiaLimite, #conceptoFecha, #minFecha, #maxFecha, #tamanioPagina').on('change', aplicarFiltros);
             
             $('#btnLimpiarFiltros').on('click', function() {
@@ -1536,6 +1628,8 @@
                     cedulaTitular: $('#pagoCedulaTitular').val() || '',
                     bancoProp: $('#pagoBancoProp').val() || '',
                     cuentaProp: $('#pagoCuentaProp').val() || '',
+                    numeroFactura: $('#pagoNumeroFactura').val() || '',
+                    fechaFactura: $('#pagoFechaFactura').val() || '',
                     fechaPago: fechaPago,
                     ano: ano,
                     mes: mes,
@@ -1571,6 +1665,7 @@
             $('#btnGuardar').on('click', function() {
                 let index = $('#editIndex').val();
                 let rawValCanon = obtenerValorLimpio($('#valCanonNumerico').val());
+                let rawValorRenovacion = obtenerValorLimpio($('#valValorRenovacion').val());
                 let nuevoObj = {
                     item: index == -1 ? datosBase.length + 1 : datosBase[index].item,
                     contrato: $('#valContrato').val(),
@@ -1578,8 +1673,17 @@
                     estado: $('#valEstado').val(),
                     arrendatario: $('#valArrendatario').val(),
                     cedulaArr: $('#valCedulaArr').val(),
+                    celArr: $('#valCelArr').val() || '',
+                    correoArr: $('#valCorreoArr').val() || '',
+                    // Codeudor / fiador del contrato (opcional)
+                    codeudor: $('#valCodeudor').val() || '',
+                    cedulaCodeudor: $('#valCedulaCodeudor').val() || '',
+                    celCodeudor: $('#valCelCodeudor').val() || '',
+                    correoCodeudor: $('#valCorreoCodeudor').val() || '',
                     propietario: $('#valPropietario').val(),
                     cedulaProp: $('#valCedulaProp').val() || '',
+                    celProp: $('#valCelProp').val() || '',
+                    correoProp: $('#valCorreoProp').val() || '',
                     titularConsignar: $('#valTitularConsignar').val() || $('#valPropietario').val() || '',
                     cedulaTitular: $('#valCedulaTitular').val() || '',
                     bancoProp: $('#valBancoProp').val() || '',
@@ -1588,8 +1692,15 @@
                     diaLimite: $('#valDiaLimite').val(),
                     fechaIni: $('#valFechaIni').val(),
                     fechaVto: $('#valFechaVto').val(),
+                    fechaAviso: $('#valFechaAviso').val() || calcularFechaAviso($('#valFechaVto').val()),
                     canon: "$ " + formatearMonedaInput(rawValCanon),
-                    rawCanon: rawValCanon
+                    rawCanon: rawValCanon,
+                    // Frecuencia con la que paga el arrendatario (Mensual/Anual) y datos
+                    // informativos de la próxima renovación del contrato (fecha y nuevo canon)
+                    frecuenciaPago: $('#valFrecuenciaPago').val() || 'Mensual',
+                    fechaRenovacion: $('#valFechaRenovacion').val() || '',
+                    valorRenovacion: rawValorRenovacion ? ("$ " + formatearMonedaInput(rawValorRenovacion)) : '',
+                    rawValorRenovacion: rawValorRenovacion
                 };
 
                 if(!nuevoObj.contrato || !nuevoObj.arrendatario || !nuevoObj.direccion) {
@@ -1668,7 +1779,7 @@
 
             let tbody = "";
             if (totalRegistros === 0) {
-                tbody = `<tr><td colspan="13" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
+                tbody = `<tr><td colspan="14" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
             } else {
                 paginados.forEach((p) => {
                     let originalIndex = datosPagos.indexOf(p);
@@ -1687,6 +1798,7 @@
                         <tr>
                             <td><strong>${p.arrendatario}</strong></td>
                             <td><strong>#${p.contrato}</strong></td>
+                            <td>${p.numeroFactura || '<span class="text-muted">-</span>'}</td>
                             <td><span class="badge bg-light text-dark border">Día ${diaLimiteVal}</span></td>
                             <td><span class="badge bg-light text-dark border">${p.formaPago || 'AV VILLAS'}</span></td>
                             <td><span class="badge ${badgeArrClass}">${p.estadoArr || 'CONFIRMADO'}</span></td>
@@ -1741,7 +1853,7 @@
             let estado = $('#filtroEstadoPago').val();
 
             let filtrados = datosPagos.filter(p => {
-                let textoMatch = `${p.arrendatario} ${p.cedulaArr} ${p.propietario} ${p.cedulaProp} ${p.titularConsignar} ${p.cedulaTitular} ${p.contrato} ${p.formaPago} ${p.formaProp}`.toLowerCase().includes(val);
+                let textoMatch = `${p.arrendatario} ${p.cedulaArr} ${p.propietario} ${p.cedulaProp} ${p.titularConsignar} ${p.cedulaTitular} ${p.contrato} ${p.formaPago} ${p.formaProp} ${p.numeroFactura || ''}`.toLowerCase().includes(val);
                 let mMatch = mes ? p.mes === mes : true;
                 let eMatch = estado ? (p.estadoArr === estado) : true;
 
@@ -1773,13 +1885,51 @@
             $('#detArrendatario').text(item.arrendatario || '-');
             $('#detCedulaArr').text(item.cedulaArr || 'N/A');
             $('#detCelArr').text(item.celArr || 'N/A');
+            $('#detCorreoArr').text(item.correoArr || 'N/A');
+            $('#detCodeudor').text(item.codeudor || 'No registra');
+            $('#detCedulaCodeudor').text(item.cedulaCodeudor || 'N/A');
+            $('#detCelCodeudor').text(item.celCodeudor || 'N/A');
+            $('#detCorreoCodeudor').text(item.correoCodeudor || 'N/A');
             $('#detPropietario').text(item.propietario || '-');
             $('#detCedulaProp').text(item.cedulaProp || 'N/A');
+            $('#detCelProp').text(item.celProp || 'N/A');
+            $('#detCorreoProp').text(item.correoProp || 'N/A');
             $('#detTitularConsignar').text(item.titularConsignar || item.propietario || '-');
             $('#detCedulaTitular').text(item.cedulaTitular || item.cedulaProp || 'N/A');
             $('#detBancoProp').text(item.bancoProp || 'No especificado');
             $('#detCuentaProp').text(item.cuentaProp || 'No especificado');
             $('#detDireccion').text(item.direccion || '-');
+            $('#detFrecuenciaPago').text(item.frecuenciaPago || 'Mensual');
+            $('#detFechaRenovacion').text(item.fechaRenovacion || 'No definida');
+            $('#detValorRenovacion').text(item.rawValorRenovacion ? (item.valorRenovacion || ('$ ' + formatearMonedaInput(item.rawValorRenovacion))) : 'No definido');
+
+            // Historial de Pagos del Inmueble: todos los recibos de este contrato, del más reciente al más antiguo
+            let historial = datosPagos
+                .filter(p => p.contrato === item.contrato)
+                .slice()
+                .sort((a, b) => (b.fechaPago || '').localeCompare(a.fechaPago || ''));
+
+            let filasHistorial = '';
+            if (historial.length === 0) {
+                filasHistorial = `<tr><td colspan="6" class="text-center text-muted py-3">Sin pagos registrados para este inmueble.</td></tr>`;
+            } else {
+                historial.forEach(p => {
+                    let badgeArr = (p.estadoArr === 'PENDIENTE') ? 'badge-status-pending' : 'badge-status-active';
+                    let badgeProp = (p.estadoProp === 'PENDIENTE') ? 'badge-status-pending' : 'badge-status-active';
+                    filasHistorial += `
+                        <tr>
+                            <td>${p.ano} / ${p.mes}</td>
+                            <td>${p.fechaPago || '-'}</td>
+                            <td><span class="badge ${badgeArr}">${p.estadoArr || 'CONFIRMADO'}</span></td>
+                            <td class="text-end fw-bold text-success">$ ${(Number(p.totalConsignado) || 0).toLocaleString()}</td>
+                            <td class="text-end fw-bold text-primary">$ ${(Number(p.netoPropietario) || 0).toLocaleString()}</td>
+                            <td><span class="badge ${badgeProp}">${p.estadoProp || 'CONFIRMADO'}</span></td>
+                        </tr>
+                    `;
+                });
+            }
+            $('#detHistorialPagos').html(filasHistorial);
+
             $('#modalVerDetalle').modal('show');
         }
 
@@ -1791,8 +1941,16 @@
             $('#valEstado').val(item.estado || 'Activo');
             $('#valArrendatario').val(item.arrendatario || '');
             $('#valCedulaArr').val(item.cedulaArr || '');
+            $('#valCelArr').val(item.celArr || '');
+            $('#valCorreoArr').val(item.correoArr || '');
+            $('#valCodeudor').val(item.codeudor || '');
+            $('#valCedulaCodeudor').val(item.cedulaCodeudor || '');
+            $('#valCelCodeudor').val(item.celCodeudor || '');
+            $('#valCorreoCodeudor').val(item.correoCodeudor || '');
             $('#valPropietario').val(item.propietario || '');
             $('#valCedulaProp').val(item.cedulaProp || '');
+            $('#valCelProp').val(item.celProp || '');
+            $('#valCorreoProp').val(item.correoProp || '');
             $('#valTitularConsignar').val(item.titularConsignar || '');
             $('#valCedulaTitular').val(item.cedulaTitular || '');
             $('#valBancoProp').val(item.bancoProp || '');
@@ -1802,6 +1960,10 @@
             $('#valDiaLimite').val(item.diaLimite || '5');
             $('#valFechaIni').val(item.fechaIni || '');
             $('#valFechaVto').val(item.fechaVto || '');
+            $('#valFechaAviso').val(item.fechaAviso || calcularFechaAviso(item.fechaVto));
+            $('#valFrecuenciaPago').val(item.frecuenciaPago || 'Mensual');
+            $('#valFechaRenovacion').val(item.fechaRenovacion || '');
+            $('#valValorRenovacion').val(item.rawValorRenovacion ? formatearMonedaInput(item.rawValorRenovacion) : '');
 
             $('#modalAdicionarLabel').html('<i class="fas fa-edit me-2" style="color: var(--brand-gold);"></i>Modificar Contrato');
             $('#modalAdicionar').modal('show');
@@ -1829,6 +1991,8 @@
             $('#pagoContratoAsociado').val(p.contrato);
             $('#pagoContratoDisplay').val("#" + p.contrato);
             $('#pagoDireccionInmueble').val(p.direccion || '');
+            $('#pagoNumeroFactura').val(p.numeroFactura || '');
+            $('#pagoFechaFactura').val(p.fechaFactura || '');
             $('#pagoFechaPago').val(p.fechaPago || '');
             $('#pagoMes').val(p.mes || 'Agosto');
             $('#pagoAno').val(p.ano || 2026);
@@ -1902,6 +2066,8 @@
                         <div class="col-6"><strong>Arrendatario:</strong> ${p.arrendatario}</div>
                         <div class="col-6"><strong>Período:</strong> ${p.ano} / ${p.mes} (${(p.tipoLiquidacion || 'mensual').replace('_', ' ').toUpperCase()})</div>
                         <div class="col-6"><strong>Inmueble:</strong> ${p.direccion || 'N/A'}</div>
+                        <div class="col-6"><strong>Número de Factura:</strong> ${p.numeroFactura || 'N/A'}</div>
+                        <div class="col-6"><strong>Fecha de Factura:</strong> ${p.fechaFactura || 'N/A'}</div>
                     </div>
                     <table class="table table-bordered table-sm mb-4">
                         <thead class="table-light">
@@ -1973,6 +2139,10 @@
             let numerosContrato = datosBase.map(c => parseInt(c.contrato) || 0);
             let maxContrato = numerosContrato.length ? Math.max(...numerosContrato) : 0;
             $('#valContrato').val(maxContrato + 1);
+            $('#valFechaAviso').val('');
+            $('#valFrecuenciaPago').val('Mensual');
+            $('#valFechaRenovacion').val('');
+            $('#valValorRenovacion').val('');
             $('#modalAdicionarLabel').html('<i class="fas fa-file-signature me-2" style="color: var(--brand-gold);"></i>Adicionar Contrato');
         }
 
@@ -1982,7 +2152,7 @@
                 return;
             }
 
-            let csv = "\uFEFFItem;No. Contrato;No. Estudio;Estado;Arrendatario;Cédula/NIT Arrendatario;Celular Arrendatario;Correo Arrendatario;Propietario;Cédula Propietario;Titular a Consignar;Cédula Titular;Banco Propietario;Cuenta Propietario;Dirección Inmueble;Valor Canon;Día Límite;Fecha Inicial;Fecha Vencimiento\n";
+            let csv = "\uFEFFItem;No. Contrato;No. Estudio;Estado;Arrendatario;Cédula/NIT Arrendatario;Celular Arrendatario;Correo Arrendatario;Codeudor;Cédula/NIT Codeudor;Celular Codeudor;Correo Codeudor;Propietario;Cédula Propietario;Celular Propietario;Correo Propietario;Titular a Consignar;Cédula Titular;Banco Propietario;Cuenta Propietario;Dirección Inmueble;Valor Canon;Día Límite;Fecha Inicial;Fecha Vencimiento;Fecha Aviso Vencimiento;Frecuencia de Pago;Fecha Próxima Renovación;Valor Renovación\n";
             
             datosBase.forEach(item => {
                 let fila = [
@@ -1994,8 +2164,14 @@
                     item.cedulaArr || '',
                     item.celArr || '',
                     item.correoArr || '',
+                    item.codeudor || '',
+                    item.cedulaCodeudor || '',
+                    item.celCodeudor || '',
+                    item.correoCodeudor || '',
                     item.propietario || '',
                     item.cedulaProp || '',
+                    item.celProp || '',
+                    item.correoProp || '',
                     item.titularConsignar || '',
                     item.cedulaTitular || '',
                     item.bancoProp || '',
@@ -2004,7 +2180,11 @@
                     item.canon || '',
                     item.diaLimite || '',
                     item.fechaIni || '',
-                    item.fechaVto || ''
+                    item.fechaVto || '',
+                    item.fechaAviso || '',
+                    item.frecuenciaPago || 'Mensual',
+                    item.fechaRenovacion || '',
+                    item.valorRenovacion || ''
                 ].map(campo => `"${String(campo).replace(/"/g, '""')}"`).join(";");
 
                 csv += fila + "\n";
@@ -2025,7 +2205,7 @@
                 return;
             }
 
-            let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
+            let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Número de Factura;Fecha de Factura;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
 
             datosPagos.forEach(p => {
                 let matchContrato = datosBase.find(c => c.contrato === p.contrato);
@@ -2045,6 +2225,8 @@
                     p.bancoProp || '',
                     p.cuentaProp || '',
                     p.direccion || '',
+                    p.numeroFactura || '',
+                    p.fechaFactura || '',
                     p.fechaPago || '',
                     p.ano || '',
                     p.mes || '',
