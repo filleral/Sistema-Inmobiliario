@@ -8,7 +8,9 @@
       "Bash(cp \"45.BD ARRIENDOS-RC-CE.HTML\" \"index.html\")",
       "Bash(python -c ' *)",
       "Bash(python \"/c/Users/POWER/AppData/Local/Temp/claude/c--Users-POWER-Downloads-excel-bienes-raices/f698681d-d07a-48c7-a504-e3f8132d4935/scratchpad/convertir_excel_v2.py\")",
-      "Bash(node test9.js)"
+      "Bash(node test9.js)",
+      "Bash(python \"/c/Users/POWER/AppData/Local/Temp/claude/c--Users-POWER-Downloads-excel-bienes-raices/f698681d-d07a-48c7-a504-e3f8132d4935/scratchpad/convertir_excel_v3.py\")",
+      "Bash(node test10.js)"
     ]
   }
 }
