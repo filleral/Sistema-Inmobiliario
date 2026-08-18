@@ -1606,16 +1606,22 @@
                     alert('Complete los campos obligatorios (*).'); return;
                 }
 
-                let existeDuplicado = datosPagos.some((p, idx) => {
-                    if (indexPago != -1 && idx == indexPago) return false;
-                    return (p.contrato === contrato || p.arrendatario.toLowerCase() === arrendatario.toLowerCase()) 
-                           && p.mes === mes 
-                           && p.ano.toString() === ano;
-                });
+                // La validación de duplicados solo aplica al REGISTRAR un recibo nuevo.
+                // Al EDITAR uno existente no se revisa: los datos importados desde Excel
+                // pueden traer legítimamente varios recibos para el mismo contrato/período
+                // (pagos parciales, correcciones, etc.), y bloquear la edición de esos
+                // registros existentes impedía guardar cambios y cerrar el formulario.
+                if (indexPago == -1) {
+                    let existeDuplicado = datosPagos.some(p => {
+                        return (p.contrato === contrato || p.arrendatario.toLowerCase() === arrendatario.toLowerCase())
+                               && p.mes === mes
+                               && p.ano.toString() === ano;
+                    });
 
-                if (existeDuplicado) {
-                    alert(`¡ATENCIÓN! Ya se grabó previamente un Recibo de Caja para este arrendatario correspondiente al período ${mes} / ${ano}.`);
-                    return;
+                    if (existeDuplicado) {
+                        alert(`¡ATENCIÓN! Ya se grabó previamente un Recibo de Caja para este arrendatario correspondiente al período ${mes} / ${ano}.`);
+                        return;
+                    }
                 }
 
                 let pagoObj = {
