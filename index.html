@@ -1376,6 +1376,13 @@
         let paginaActual = 1;
         let paginaActualPagos = 1;
 
+        // Controla si el formulario de recibo debe auto-buscar/limpiar según el
+        // período (mes/año) mientras se escribe: true solo cuando se abrió con
+        // "Registrar Recibo de Caja" (creación); false cuando se abrió editando un
+        // recibo puntual desde la tabla (ahí cambiar el período no debe resetear
+        // ni reemplazar los demás datos que se estén corrigiendo).
+        let modoNuevoRecibo = true;
+
         function salirAplicacion() {
             if(confirm('¿Desea salir de la aplicación?')) {
                 window.close();
@@ -1593,6 +1600,18 @@
                 $('#pagoCanon').val(formatearMonedaInput($(this).data('canon')));
                 $('#sugerenciasCedula').hide();
                 calcularLiquidacionPropietario();
+                // Si ya existe un recibo guardado para este contrato y el período
+                // (mes/año) que esté seleccionado en el formulario, lo carga completo
+                // (incluida la factura original) en vez de dejarlo en blanco.
+                if (modoNuevoRecibo) intentarCargarPagoExistente();
+            });
+
+            // Si el usuario cambia el mes o el año después de elegir el arrendatario
+            // (mientras está REGISTRANDO uno nuevo), vuelve a revisar si ese período ya
+            // tiene un recibo. Al EDITAR uno puntual (modoNuevoRecibo = false) esto no
+            // aplica, para no resetear los datos que se estén corrigiendo.
+            $('#pagoMes, #pagoAno').on('change', function() {
+                if (modoNuevoRecibo) intentarCargarPagoExistente();
             });
 
             // GUARDAR RECIBO DE CAJA CON VALIDACIÓN DE MES/AÑO
@@ -2002,8 +2021,11 @@
             }
         }
 
-        function abrirModalEditarPago(index) {
-            let p = datosPagos[index];
+        // Vuelca los datos de un recibo ya guardado (p) en el formulario, incluyendo
+        // el número/fecha de factura originales. Se usa tanto al abrir "Editar" desde
+        // la tabla como al detectar, mientras se está registrando uno nuevo, que ya
+        // existe un recibo para el arrendatario/contrato y período seleccionados.
+        function poblarFormularioPagoDesdeRegistro(p, index) {
             $('#editIndexPago').val(index);
             $('#inputBusquedaCedula').val(p.arrendatario);
             $('#pagoCedulaArr').val(p.cedulaArr || '');
@@ -2039,8 +2061,59 @@
             $('#pagoObservaciones').val(p.observaciones || '');
 
             $('#modalPagoTitulo').html('<i class="fas fa-edit me-2" style="color: var(--brand-gold);"></i>Modificar Recibo y Liquidación Propietario');
-            $('#modalNuevoPago').modal('show');
             calcularLiquidacionPropietario();
+        }
+
+        // Limpia los campos propios del recibo (factura, descuentos, liquidación...)
+        // cuando el período seleccionado deja de coincidir con uno ya existente,
+        // sin borrar los datos del arrendatario/contrato ya elegidos por autocompletar.
+        function resetearCamposPeriodoPago() {
+            $('#editIndexPago').val('-1');
+            $('#pagoNumeroFactura').val('');
+            $('#pagoFechaFactura').val('');
+            $('#pagoFechaPago').val('');
+            $('#pagoConceptoDescArr').val('');
+            $('#pagoDescuento').val('0');
+            $('#pagoTipoLiquidacion').val('mensual');
+            $('#aplicar4x1000').prop('checked', false);
+            $('#pagoConceptoDescProp').val('');
+            $('#pagoValorDescProp').val('0');
+            $('#pagoFechaProp').val('');
+            $('#pagoFormaPago').val('AV VILLAS');
+            $('#pagoEstadoArr').val('CONFIRMADO');
+            $('#pagoFormaProp').val('AV VILLAS');
+            $('#pagoEstadoProp').val('CONFIRMADO');
+            $('#pagoObservaciones').val('');
+            $('#modalPagoTitulo').html('<i class="fas fa-receipt me-2" style="color: var(--brand-gold);"></i>Registrar Recibo de Caja y Liquidación Propietario');
+            calcularLiquidacionPropietario();
+        }
+
+        // Revisa si, para el contrato y el período (mes/año) actualmente seleccionados
+        // en el formulario, ya existe un recibo guardado. Si lo hay, carga sus datos
+        // completos (incluida la factura original) para editarlo; si no, deja el
+        // formulario listo para un recibo nuevo en ese período.
+        function intentarCargarPagoExistente() {
+            let contrato = $('#pagoContratoAsociado').val();
+            if (!contrato) return;
+
+            let mes = $('#pagoMes').val();
+            let ano = $('#pagoAno').val().toString();
+            let indexExistente = datosPagos.findIndex(p => p.contrato === contrato && p.mes === mes && p.ano.toString() === ano);
+            let indexActual = parseInt($('#editIndexPago').val(), 10);
+
+            if (indexExistente !== -1) {
+                if (indexActual !== indexExistente) {
+                    poblarFormularioPagoDesdeRegistro(datosPagos[indexExistente], indexExistente);
+                }
+            } else if (indexActual !== -1) {
+                resetearCamposPeriodoPago();
+            }
+        }
+
+        function abrirModalEditarPago(index) {
+            modoNuevoRecibo = false;
+            poblarFormularioPagoDesdeRegistro(datosPagos[index], index);
+            $('#modalNuevoPago').modal('show');
         }
 
         function eliminarPago(index) {
@@ -2127,6 +2200,7 @@
         }
 
         function prepararNuevoPago() {
+            modoNuevoRecibo = true;
             $('#editIndexPago').val('-1');
             $('#formPago')[0].reset();
             $('#inputBusquedaCedula').val('');
