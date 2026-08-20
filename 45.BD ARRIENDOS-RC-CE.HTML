@@ -1609,21 +1609,38 @@
                     alert('Complete los campos obligatorios (*).'); return;
                 }
 
-                // La validación de duplicados solo aplica al REGISTRAR un recibo nuevo.
-                // Al EDITAR uno existente no se revisa: los datos importados desde Excel
-                // pueden traer legítimamente varios recibos para el mismo contrato/período
-                // (pagos parciales, correcciones, etc.), y bloquear la edición de esos
-                // registros existentes impedía guardar cambios y cerrar el formulario.
+                // La validación de duplicados solo aplica al REGISTRAR un recibo nuevo (no al
+                // editar uno existente). Si ya hay un recibo para este arrendatario en el mismo
+                // período, en vez de bloquear el guardado se le muestra el historial del contrato
+                // y se le pregunta si quiere ACTUALIZAR ese recibo existente con los datos que
+                // acaba de digitar (en lugar de crear uno duplicado).
                 if (indexPago == -1) {
-                    let existeDuplicado = datosPagos.some(p => {
+                    let indexExistente = datosPagos.findIndex(p => {
                         return (p.contrato === contrato || p.arrendatario.toLowerCase() === arrendatario.toLowerCase())
                                && p.mes === mes
                                && p.ano.toString() === ano;
                     });
 
-                    if (existeDuplicado) {
-                        alert(`¡ATENCIÓN! Ya se grabó previamente un Recibo de Caja para este arrendatario correspondiente al período ${mes} / ${ano}.`);
-                        return;
+                    if (indexExistente !== -1) {
+                        let historialContrato = datosPagos
+                            .filter(p => p.contrato === contrato)
+                            .slice()
+                            .sort((a, b) => (b.fechaPago || '').localeCompare(a.fechaPago || ''))
+                            .map(p => {
+                                let total = Number(p.totalConsignado) || 0;
+                                return `• ${p.mes}/${p.ano} — $ ${total.toLocaleString()} — ${p.estadoArr || 'CONFIRMADO'} (recibo: ${p.fechaPago || 'sin fecha'})`;
+                            })
+                            .join('\n');
+
+                        let mensaje = `Ya existe un recibo de caja para ${arrendatario} en el período ${mes} / ${ano}.\n\n`
+                            + `Historial de recibos del contrato #${contrato}:\n${historialContrato}\n\n`
+                            + `¿Deseas ACTUALIZAR ese recibo de ${mes}/${ano} con los datos que acabas de ingresar?\n`
+                            + `(Aceptar = actualizar el existente · Cancelar = no guardar nada)`;
+
+                        if (!confirm(mensaje)) return;
+
+                        // Convierte el guardado en una edición del recibo ya existente
+                        indexPago = indexExistente;
                     }
                 }
 
