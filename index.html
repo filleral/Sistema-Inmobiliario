@@ -329,6 +329,31 @@
 </head>
 <body>
 
+    <!-- Lista de bancos sugeridos (compartida por los campos de banco de Contrato y
+         Recibo). Es solo una ayuda de autocompletado: al ser un <input> con
+         "list", el campo acepta cualquier texto, así el banco guardado (aunque no
+         esté en esta lista o venga escrito distinto) nunca se pierde ni se vacía. -->
+    <datalist id="listaBancos">
+        <option value="BANCOLOMBIA">
+        <option value="DAVIVIENDA">
+        <option value="BANCO DE BOGOTÁ">
+        <option value="BBVA COLOMBIA">
+        <option value="AV VILLAS">
+        <option value="BANCO DE OCCIDENTE">
+        <option value="BANCO POPULAR">
+        <option value="SCOTIABANK COLPATRIA">
+        <option value="BANCO CAJA SOCIAL">
+        <option value="BANCO AGRARIO">
+        <option value="NEQUI">
+        <option value="DAVIPLATA">
+        <option value="BANCO FALABELLA">
+        <option value="BANCO PICHINCHA">
+        <option value="LULO BANK">
+        <option value="NU COLOMBIA">
+        <option value="RAPPIPAY">
+        <option value="EFECTIVO">
+    </datalist>
+
     <!-- Navegación -->
     <nav class="navbar navbar-dark navbar-luxury">
         <div class="container-fluid px-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -700,30 +725,13 @@
                                 <label class="form-label">Cédula / NIT Titular *</label>
                                 <input type="text" class="form-control" id="pagoCedulaTitular">
                             </div>
-                            <!-- DESPLEGABLE DE BANCOS DE COLOMBIA -->
+                            <!-- BANCO: campo de texto con sugerencias (datalist) en vez de lista
+                                 fija, para no perder/vaciar el dato cuando el banco guardado no
+                                 coincide letra por letra con una opción (ej: "BANCO DAVIVIENDA",
+                                 "COLPATRIA", "ITAU", etc., tal como vienen de los Excel reales). -->
                             <div class="col-md-4">
                                 <label class="form-label">Banco del Propietario *</label>
-                                <select class="form-select" id="pagoBancoProp">
-                                    <option value="">-- Seleccione Banco --</option>
-                                    <option value="BANCOLOMBIA">BANCOLOMBIA</option>
-                                    <option value="DAVIVIENDA">DAVIVIENDA</option>
-                                    <option value="BANCO DE BOGOTA">BANCO DE BOGOTÁ</option>
-                                    <option value="BBVA COLOMBIA">BBVA COLOMBIA</option>
-                                    <option value="AV VILLAS">AV VILLAS</option>
-                                    <option value="BANCO DE OCCIDENTE">BANCO DE OCCIDENTE</option>
-                                    <option value="BANCO POPULAR">BANCO POPULAR</option>
-                                    <option value="SCOTIABANK COLPATRIA">SCOTIABANK COLPATRIA</option>
-                                    <option value="BANCO CAJA SOCIAL">BANCO CAJA SOCIAL</option>
-                                    <option value="BANCO AGRARIO">BANCO AGRARIO</option>
-                                    <option value="NEQUI">NEQUI</option>
-                                    <option value="DAVIPLATA">DAVIPLATA</option>
-                                    <option value="BANCO FALABELLA">BANCO FALABELLA</option>
-                                    <option value="BANCO PICHINCHA">BANCO PICHINCHA</option>
-                                    <option value="LULO BANK">LULO BANK</option>
-                                    <option value="NU COLOMBIA">NU COLOMBIA</option>
-                                    <option value="RAPPIPAY">RAPPIPAY</option>
-                                    <option value="OTRO">OTRO / EFECTIVO</option>
-                                </select>
+                                <input type="text" class="form-control" id="pagoBancoProp" list="listaBancos" placeholder="Seleccione o escriba el banco">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Número de Cuenta *</label>
@@ -911,27 +919,7 @@
                             <div class="col-md-6"><label class="form-label">Cédula o NIT Titular</label><input type="text" class="form-control" id="valCedulaTitular"></div>
                             <div class="col-md-6">
                                 <label class="form-label">Banco del Propietario</label>
-                                <select class="form-select" id="valBancoProp">
-                                    <option value="">-- Seleccione Banco --</option>
-                                    <option value="BANCOLOMBIA">BANCOLOMBIA</option>
-                                    <option value="DAVIVIENDA">DAVIVIENDA</option>
-                                    <option value="BANCO DE BOGOTA">BANCO DE BOGOTÁ</option>
-                                    <option value="BBVA COLOMBIA">BBVA COLOMBIA</option>
-                                    <option value="AV VILLAS">AV VILLAS</option>
-                                    <option value="BANCO DE OCCIDENTE">BANCO DE OCCIDENTE</option>
-                                    <option value="BANCO POPULAR">BANCO POPULAR</option>
-                                    <option value="SCOTIABANK COLPATRIA">SCOTIABANK COLPATRIA</option>
-                                    <option value="BANCO CAJA SOCIAL">BANCO CAJA SOCIAL</option>
-                                    <option value="BANCO AGRARIO">BANCO AGRARIO</option>
-                                    <option value="NEQUI">NEQUI</option>
-                                    <option value="DAVIPLATA">DAVIPLATA</option>
-                                    <option value="BANCO FALABELLA">BANCO FALABELLA</option>
-                                    <option value="BANCO PICHINCHA">BANCO PICHINCHA</option>
-                                    <option value="LULO BANK">LULO BANK</option>
-                                    <option value="NU COLOMBIA">NU COLOMBIA</option>
-                                    <option value="RAPPIPAY">RAPPIPAY</option>
-                                    <option value="OTRO">OTRO / EFECTIVO</option>
-                                </select>
+                                <input type="text" class="form-control" id="valBancoProp" list="listaBancos" placeholder="Seleccione o escriba el banco">
                             </div>
                             <div class="col-md-6"><label class="form-label">Número de Cuenta</label><input type="text" class="form-control" id="valCuentaProp"></div>
                         </div>
@@ -2026,15 +2014,21 @@
         // la tabla como al detectar, mientras se está registrando uno nuevo, que ya
         // existe un recibo para el arrendatario/contrato y período seleccionados.
         function poblarFormularioPagoDesdeRegistro(p, index) {
+            // Muchos recibos importados del histórico de Excel no traen banco/cuenta
+            // propios (ese dato solía diligenciarse solo en el contrato). Por eso, si
+            // el recibo no lo tiene, se completa con lo que sí tenga su contrato en
+            // vez de dejar el campo vacío.
+            let contratoRelacionado = datosBase.find(c => c.contrato === p.contrato);
+
             $('#editIndexPago').val(index);
             $('#inputBusquedaCedula').val(p.arrendatario);
             $('#pagoCedulaArr').val(p.cedulaArr || '');
-            $('#pagoPropietario').val(p.propietario || '');
-            $('#pagoCedulaProp').val(p.cedulaProp || '');
-            $('#pagoTitularConsignar').val(p.titularConsignar || p.propietario || '');
-            $('#pagoCedulaTitular').val(p.cedulaTitular || p.cedulaProp || '');
-            $('#pagoBancoProp').val(p.bancoProp || '');
-            $('#pagoCuentaProp').val(p.cuentaProp || '');
+            $('#pagoPropietario').val(p.propietario || (contratoRelacionado ? contratoRelacionado.propietario : '') || '');
+            $('#pagoCedulaProp').val(p.cedulaProp || (contratoRelacionado ? contratoRelacionado.cedulaProp : '') || '');
+            $('#pagoTitularConsignar').val(p.titularConsignar || (contratoRelacionado ? contratoRelacionado.titularConsignar : '') || p.propietario || '');
+            $('#pagoCedulaTitular').val(p.cedulaTitular || (contratoRelacionado ? contratoRelacionado.cedulaTitular : '') || p.cedulaProp || '');
+            $('#pagoBancoProp').val(p.bancoProp || (contratoRelacionado ? contratoRelacionado.bancoProp : '') || '');
+            $('#pagoCuentaProp').val(p.cuentaProp || (contratoRelacionado ? contratoRelacionado.cuentaProp : '') || '');
             $('#pagoContratoAsociado').val(p.contrato);
             $('#pagoContratoDisplay').val("#" + p.contrato);
             $('#pagoDireccionInmueble').val(p.direccion || '');
