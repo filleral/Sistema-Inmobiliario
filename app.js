@@ -1,0 +1,1390 @@
+        // ==========================================================================
+        // CONFIGURACIÓN DE LA APLICACIÓN — ajustar aquí si cambian las reglas
+        // ==========================================================================
+
+        // Prefijo de TODAS las claves de localStorage propias de este sistema.
+        // Las funciones de Respaldo/Restaurar/"Restaurar Datos" solo leen o
+        // eliminan claves con este prefijo, para no afectar otras páginas que
+        // pudieran compartir el mismo dominio (por ejemplo, en GitHub Pages).
+        const PREFIJO_CLAVES_APP = 'brw_';
+
+        // Mapeo de columnas del CSV a los campos internos del sistema para la
+        // importación inicial de datos (botón "Importar CSV"). La clave (izquierda)
+        // es el nombre interno; el valor (derecha) es el encabezado que debe tener
+        // esa columna en la primera fila del archivo CSV. Ajuste los valores de la
+        // derecha si su archivo usa otros títulos de columna.
+        const MAPEO_CSV_IMPORTACION = {
+            arrendatario: 'Arrendatario',   // Nombre completo del arrendatario
+            cedulaArr: 'Cedula',            // Cédula o NIT del arrendatario
+            inmueble: 'Inmueble',           // Dirección del inmueble
+            propietario: 'Propietario',     // Nombre del propietario
+            canon: 'Canon',                 // Valor mensual del canon (solo números)
+            diaLimite: 'DiaLimite',         // Día límite de pago (1-31)
+            fechaPago: 'FechaPago',         // Fecha del recibo, formato AAAA-MM-DD (opcional)
+            medioPago: 'MedioPago',         // Medio de pago del arrendatario (opcional)
+            estadoPago: 'EstadoPago',       // CONFIRMADO / PENDIENTE (opcional)
+            periodo: 'Periodo'              // Período del pago, formato AAAA-MM (opcional)
+        };
+
+        // Datos de ejemplo: se dejan vacíos a propósito antes de publicar el sistema,
+        // para no exponer información real de clientes en un repositorio público.
+        // El sistema arranca sin registros; use "Importar CSV" o "Restaurar Respaldo"
+        // para cargar información.
+        const datosBaseIniciales = [];
+        const datosPagosIniciales = [];
+
+        let datosBase = JSON.parse(localStorage.getItem('brw_datosBase')) || datosBaseIniciales;
+        let datosPagosRaw = JSON.parse(localStorage.getItem('brw_datosPagos_v10')) || JSON.parse(localStorage.getItem('brw_datosPagos_v9')) || datosPagosIniciales;
+
+        // Migración: contratos guardados antes de existir "Fecha Aviso Vencimiento"
+        // no tienen ese campo. Se calcula aquí (90 días antes del vencimiento) para
+        // que el filtro "Concepto Fecha: Fecha Aviso Vencimiento" funcione sin
+        // necesidad de volver a editar cada contrato manualmente.
+        datosBase.forEach(item => {
+            if (!item.fechaAviso && item.fechaVto) {
+                item.fechaAviso = calcularFechaAviso(item.fechaVto);
+            }
+        });
+
+        // Normaliza los pagos leídos de localStorage y recalcula sus valores derivados
+        // (por si el registro es antiguo o le faltan campos), usando las mismas fórmulas
+        // que calcularLiquidacionPropietario():
+        //   Total Recaudado   = Canon - Descuento al arrendatario
+        //   Comisión Adm.     = 10% del Canon, solo si la liquidación es "mensual"
+        //   GMF (4x1000)      = 0.4% del Canon, si el registro lo trae guardado
+        //   Neto Propietario  = Canon - Comisión - GMF - Descuento al propietario
+        let datosPagos = datosPagosRaw.map(p => {
+            let canonVal = p.canon || p.totalConsignado || 0;
+            let descuentoVal = p.descuento || 0;
+            let totalRecaudadoVal = canonVal - descuentoVal;
+
+            let tipoLiq = p.tipoLiquidacion || 'mensual';
+            let comisionVal = tipoLiq === 'mensual' ? Math.round(canonVal * 0.1) : 0;
+            let descPropVal = p.valorDescProp || 0;
+            let gmfVal = p.valor4x1000 || 0;
+
+            let netoCalculado = canonVal - comisionVal - gmfVal - descPropVal;
+
+            let cedulaArrVal = p.cedulaArr || "";
+            let cedulaPropVal = p.cedulaProp || "";
+            if ((!cedulaArrVal || !cedulaPropVal) && p.contrato) {
+                let matchContrato = datosBase.find(c => c.contrato === p.contrato);
+                if (matchContrato) {
+                    if (!cedulaArrVal) cedulaArrVal = matchContrato.cedulaArr || "";
+                    if (!cedulaPropVal) cedulaPropVal = matchContrato.cedulaProp || "";
+                }
+            }
+
+            return {
+                arrendatario: p.arrendatario || 'Sin Arrendatario',
+                cedulaArr: cedulaArrVal,
+                propietario: p.propietario || 'Sin Especificar',
+                cedulaProp: cedulaPropVal,
+                titularConsignar: p.titularConsignar || "",
+                cedulaTitular: p.cedulaTitular || "",
+                bancoProp: p.bancoProp || "",
+                cuentaProp: p.cuentaProp || "",
+                numeroFactura: p.numeroFactura || "",
+                fechaFactura: p.fechaFactura || "",
+                fechaPago: p.fechaPago || '2026-01-01',
+                ano: (p.ano || 2026).toString(),
+                mes: p.mes || 'Enero',
+                contrato: p.contrato || '0',
+                direccion: p.direccion || 'Sin Dirección',
+                formaPago: p.formaPago || 'AV VILLAS',
+                estadoArr: p.estadoArr || 'CONFIRMADO',
+                canon: canonVal,
+                conceptoDescArr: p.conceptoDescArr || '',
+                descuento: descuentoVal,
+                totalConsignado: totalRecaudadoVal,
+                tipoLiquidacion: tipoLiq,
+                comision: comisionVal,
+                valor4x1000: gmfVal,
+                conceptoDescProp: p.conceptoDescProp || '',
+                valorDescProp: descPropVal,
+                netoPropietario: netoCalculado,
+                fechaProp: p.fechaProp || '',
+                formaProp: p.formaProp || 'AV VILLAS',
+                estadoProp: p.estadoProp || 'CONFIRMADO',
+                observaciones: p.observaciones || ''
+            };
+        });
+
+        function guardarEnLocalStorage() {
+            localStorage.setItem('brw_datosBase', JSON.stringify(datosBase));
+            localStorage.setItem('brw_datosPagos_v10', JSON.stringify(datosPagos));
+        }
+
+        function restaurarDatosOriginales() {
+            if(confirm('¿Desea restablecer todos los datos a la versión inicial?')) {
+                // Solo se eliminan las claves propias de esta aplicación (prefijo brw_)
+                Object.keys(localStorage)
+                    .filter(clave => clave.startsWith(PREFIJO_CLAVES_APP))
+                    .forEach(clave => localStorage.removeItem(clave));
+                datosBase = [...datosBaseIniciales];
+                datosPagos = [...datosPagosIniciales];
+                aplicarFiltros();
+                cargarTablaPagos();
+                alert('¡Datos restaurados con éxito!');
+            }
+        }
+
+        // ==========================================================================
+        // RESPALDO Y RESTAURACIÓN COMPLETA (archivo .json)
+        // ==========================================================================
+
+        // Descarga TODAS las claves de localStorage propias de la app en un único
+        // archivo .json (contratos, pagos y cualquier otra clave con prefijo brw_).
+        function respaldarTodoJSON() {
+            let clavesApp = Object.keys(localStorage).filter(clave => clave.startsWith(PREFIJO_CLAVES_APP));
+            let datosRespaldo = {};
+            clavesApp.forEach(clave => {
+                try {
+                    datosRespaldo[clave] = JSON.parse(localStorage.getItem(clave));
+                } catch (e) {
+                    datosRespaldo[clave] = localStorage.getItem(clave);
+                }
+            });
+
+            let respaldo = {
+                app: 'Bienes Raíces White - Sistema de Arriendos',
+                version: 1,
+                fecha: new Date().toISOString(),
+                datos: datosRespaldo
+            };
+
+            let blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: 'application/json;charset=utf-8;' });
+            let link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Respaldo_BRW_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Lee el archivo .json seleccionado por el usuario y dispara la restauración
+        function manejarArchivoRespaldo(event) {
+            let archivo = event.target.files[0];
+            if (!archivo) return;
+
+            let lector = new FileReader();
+            lector.onload = function(e) {
+                let respaldo;
+                try {
+                    respaldo = JSON.parse(e.target.result);
+                } catch (err) {
+                    alert('El archivo seleccionado no es un JSON válido.');
+                    event.target.value = '';
+                    return;
+                }
+
+                // Validación mínima de la estructura esperada del respaldo
+                if (!respaldo || typeof respaldo !== 'object' || !respaldo.datos || typeof respaldo.datos !== 'object') {
+                    alert('El archivo no tiene la estructura de un respaldo válido de este sistema.');
+                    event.target.value = '';
+                    return;
+                }
+
+                let clavesRespaldo = Object.keys(respaldo.datos);
+                if (clavesRespaldo.length === 0) {
+                    alert('El respaldo no contiene datos para restaurar.');
+                    event.target.value = '';
+                    return;
+                }
+
+                if (!confirm('Esto reemplazará los datos actuales, ¿continuar?')) {
+                    event.target.value = '';
+                    return;
+                }
+
+                // Elimina solo las claves propias de la aplicación antes de restaurar
+                Object.keys(localStorage)
+                    .filter(clave => clave.startsWith(PREFIJO_CLAVES_APP))
+                    .forEach(clave => localStorage.removeItem(clave));
+
+                clavesRespaldo.forEach(clave => {
+                    let valor = respaldo.datos[clave];
+                    localStorage.setItem(clave, typeof valor === 'string' ? valor : JSON.stringify(valor));
+                });
+
+                alert('¡Respaldo restaurado con éxito! La página se recargará.');
+                event.target.value = '';
+                location.reload();
+            };
+            lector.onerror = function() {
+                alert('No se pudo leer el archivo seleccionado.');
+            };
+            lector.readAsText(archivo, 'UTF-8');
+        }
+
+        // ==========================================================================
+        // IMPORTACIÓN DE DATOS INICIALES DESDE CSV
+        // ==========================================================================
+
+        // Separa una línea CSV respetando comillas dobles y el delimitador indicado
+        function analizarLineaCSV(linea, delimitador) {
+            let resultado = [];
+            let actual = '';
+            let dentroComillas = false;
+            for (let i = 0; i < linea.length; i++) {
+                let c = linea[i];
+                if (c === '"') {
+                    if (dentroComillas && linea[i + 1] === '"') { actual += '"'; i++; }
+                    else dentroComillas = !dentroComillas;
+                } else if (c === delimitador && !dentroComillas) {
+                    resultado.push(actual);
+                    actual = '';
+                } else {
+                    actual += c;
+                }
+            }
+            resultado.push(actual);
+            return resultado.map(v => v.trim());
+        }
+
+        function manejarArchivoCSV(event) {
+            let archivo = event.target.files[0];
+            if (!archivo) return;
+
+            let lector = new FileReader();
+            lector.onload = function(e) {
+                procesarCSVImportado(e.target.result);
+                event.target.value = '';
+            };
+            lector.onerror = function() {
+                alert('No se pudo leer el archivo CSV seleccionado.');
+            };
+            lector.readAsText(archivo, 'UTF-8');
+        }
+
+        // Convierte el texto del CSV en contratos (y recibos, si el CSV los trae)
+        // usando el mapeo de columnas definido en MAPEO_CSV_IMPORTACION.
+        function procesarCSVImportado(texto) {
+            // Quita el BOM inicial (marca de orden de bytes) si el archivo lo trae
+            if (texto.charCodeAt(0) === 0xFEFF) texto = texto.slice(1);
+            let lineas = texto.split(/\r\n|\n|\r/).filter(l => l.trim() !== '');
+            if (lineas.length < 2) {
+                alert('El archivo CSV está vacío o no contiene registros.');
+                return;
+            }
+
+            // Detecta el delimitador según el encabezado (punto y coma o coma)
+            let delimitador = lineas[0].includes(';') ? ';' : ',';
+            let encabezados = analizarLineaCSV(lineas[0], delimitador);
+
+            let indices = {};
+            Object.keys(MAPEO_CSV_IMPORTACION).forEach(campo => {
+                let nombreColumna = MAPEO_CSV_IMPORTACION[campo];
+                indices[campo] = encabezados.findIndex(h => h.toLowerCase() === nombreColumna.toLowerCase());
+            });
+
+            if (indices.arrendatario === -1) {
+                alert(`No se encontró la columna "${MAPEO_CSV_IMPORTACION.arrendatario}" (arrendatario) en el CSV. Revise el mapeo de columnas o los encabezados del archivo.`);
+                return;
+            }
+
+            let importados = 0;
+            let omitidos = 0;
+            let numerosContrato = datosBase.map(c => parseInt(c.contrato) || 0);
+            let maxContrato = numerosContrato.length ? Math.max(...numerosContrato) : 0;
+            let mesesNombre = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+            for (let i = 1; i < lineas.length; i++) {
+                let columnas = analizarLineaCSV(lineas[i], delimitador);
+                let obtener = (campo) => (indices[campo] !== undefined && indices[campo] !== -1) ? (columnas[indices[campo]] || '').trim() : '';
+
+                let arrendatario = obtener('arrendatario');
+                let inmueble = obtener('inmueble');
+
+                // Fila tolerada como incompleta si faltan los datos mínimos (arrendatario e inmueble)
+                if (!arrendatario || !inmueble) {
+                    omitidos++;
+                    continue;
+                }
+
+                maxContrato++;
+                let rawCanon = obtenerValorLimpio(obtener('canon'));
+                let diaLimite = obtener('diaLimite') || '5';
+                let cedulaArr = obtener('cedulaArr');
+                let propietario = obtener('propietario') || 'INDEPENDIENTE';
+
+                let nuevoContrato = {
+                    item: (datosBase.length + 1).toString(),
+                    contrato: maxContrato.toString(),
+                    estudio: 'N/A',
+                    estado: 'Activo',
+                    arrendatario: arrendatario,
+                    cedulaArr: cedulaArr,
+                    celArr: '',
+                    correoArr: '',
+                    propietario: propietario,
+                    cedulaProp: '',
+                    titularConsignar: propietario,
+                    cedulaTitular: '',
+                    bancoProp: '',
+                    cuentaProp: '',
+                    direccion: inmueble,
+                    canon: '$ ' + formatearMonedaInput(rawCanon),
+                    rawCanon: rawCanon,
+                    diaLimite: diaLimite,
+                    fechaIni: '',
+                    fechaVto: ''
+                };
+                datosBase.push(nuevoContrato);
+
+                // Si el CSV incluye fecha de pago, crea también el recibo asociado
+                let fechaPago = obtener('fechaPago');
+                if (fechaPago) {
+                    let periodo = obtener('periodo');
+                    let anoPeriodo = fechaPago.slice(0, 4) || '2026';
+                    let mesPeriodo = 'Enero';
+                    if (periodo && periodo.includes('-')) {
+                        let partes = periodo.split('-');
+                        anoPeriodo = partes[0];
+                        mesPeriodo = mesesNombre[parseInt(partes[1], 10) - 1] || 'Enero';
+                    } else {
+                        let partesFecha = fechaPago.split('-');
+                        if (partesFecha.length === 3) {
+                            anoPeriodo = partesFecha[0];
+                            mesPeriodo = mesesNombre[parseInt(partesFecha[1], 10) - 1] || 'Enero';
+                        }
+                    }
+
+                    // Comisión de administración estándar (10%) sobre el canon importado
+                    let comision = Math.round(rawCanon * 0.10);
+                    let netoPropietario = rawCanon - comision;
+
+                    datosPagos.unshift({
+                        arrendatario: arrendatario,
+                        cedulaArr: cedulaArr,
+                        propietario: propietario,
+                        cedulaProp: '',
+                        titularConsignar: propietario,
+                        cedulaTitular: '',
+                        bancoProp: '',
+                        cuentaProp: '',
+                        fechaPago: fechaPago,
+                        ano: anoPeriodo,
+                        mes: mesPeriodo,
+                        contrato: nuevoContrato.contrato,
+                        direccion: inmueble,
+                        formaPago: obtener('medioPago') || 'EFECTIVO',
+                        estadoArr: (obtener('estadoPago') || 'CONFIRMADO').toUpperCase(),
+                        canon: rawCanon,
+                        conceptoDescArr: '',
+                        descuento: 0,
+                        totalConsignado: rawCanon,
+                        tipoLiquidacion: 'mensual',
+                        comision: comision,
+                        valor4x1000: 0,
+                        conceptoDescProp: '',
+                        valorDescProp: 0,
+                        netoPropietario: netoPropietario,
+                        fechaProp: '',
+                        formaProp: 'EFECTIVO',
+                        estadoProp: 'PENDIENTE',
+                        observaciones: 'Importado desde CSV'
+                    });
+                }
+
+                importados++;
+            }
+
+            if (importados > 0) {
+                guardarEnLocalStorage();
+                if (typeof window.aplicarFiltros === 'function') window.aplicarFiltros();
+                cargarTablaPagos();
+            }
+
+            alert(`Importación finalizada.\nRegistros importados: ${importados}\nRegistros omitidos (incompletos): ${omitidos}`);
+        }
+
+        let paginaActual = 1;
+        let paginaActualPagos = 1;
+
+        // Controla si el formulario de recibo debe auto-buscar/limpiar según el
+        // período (mes/año) mientras se escribe: true solo cuando se abrió con
+        // "Registrar Recibo de Caja" (creación); false cuando se abrió editando un
+        // recibo puntual desde la tabla (ahí cambiar el período no debe resetear
+        // ni reemplazar los demás datos que se estén corrigiendo).
+        let modoNuevoRecibo = true;
+
+        function salirAplicacion() {
+            if(confirm('¿Desea salir de la aplicación?')) {
+                window.close();
+                window.location.href = "about:blank";
+            }
+        }
+
+        function formatearMonedaInput(valor) {
+            if (valor === undefined || valor === null || valor === "") return "";
+            let limpio = valor.toString().replace(/\D/g, "");
+            return limpio.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        function formatearEntradaMoneda(input) {
+            input.value = formatearMonedaInput(input.value);
+        }
+
+        function obtenerValorLimpio(valorStr) {
+            if (!valorStr) return 0;
+            let limpio = valorStr.toString().replace(/\$/g, "").replace(/\./g, "").replace(/\s/g, "").replace(",", ".");
+            return parseFloat(limpio) || 0;
+        }
+
+        function calcularLiquidacionPropietario() {
+            let canon = obtenerValorLimpio($('#pagoCanon').val());
+            let descuentoArr = obtenerValorLimpio($('#pagoDescuento').val());
+
+            // Total Recaudado = lo que pagó el arrendatario menos su descuento (si aplica)
+            let totalRecaudado = canon - descuentoArr;
+            $('#pagoTotalConsignado').val(totalRecaudado >= 0 ? formatearMonedaInput(totalRecaudado) : "0");
+
+            let tipoLiq = $('#pagoTipoLiquidacion').val();
+            // Comisión de administración: 10% del canon, solo en liquidaciones mensuales
+            // (en liquidaciones anuales/renovación o "no aplica" no se cobra comisión).
+            let comision = (tipoLiq === 'mensual') ? canon * 0.10 : 0;
+            // GMF / 4x1000: gravamen bancario opcional, 0.4% (4 x 1.000) del canon,
+            // solo se descuenta si el usuario marca la casilla "Descontar GMF".
+            let gmf4x1000 = $('#aplicar4x1000').is(':checked') ? canon * 0.004 : 0;
+            let descPropietarioVal = obtenerValorLimpio($('#pagoValorDescProp').val());
+
+            // Neto a Consignar al Propietario = canon - comisión - GMF - descuentos propios del propietario
+            let netoPropietario = canon - comision - gmf4x1000 - descPropietarioVal;
+
+            $('#pagoComision').val(formatearMonedaInput(Math.round(comision)));
+            $('#pagoValor4x1000').val("$ " + formatearMonedaInput(Math.round(gmf4x1000)));
+            $('#pagoNetoPropietario').val(netoPropietario >= 0 ? formatearMonedaInput(Math.round(netoPropietario)) : "0");
+        }
+
+        // Calcula la Fecha de Aviso de Vencimiento: 90 días (3 meses) antes del
+        // vencimiento del contrato, plazo habitual de preaviso para renovación o
+        // terminación de un arriendo. Recibe una fecha ISO (AAAA-MM-DD) y devuelve otra.
+        function calcularFechaAviso(fechaVtoISO) {
+            if (!fechaVtoISO) return '';
+            let d = new Date(fechaVtoISO);
+            d.setDate(d.getDate() - 90);
+            return d.toISOString().split('T')[0];
+        }
+
+        function calcularVencimientoDinamico() {
+            let fechaIni = $('#valFechaIni').val();
+            if(fechaIni) {
+                let d = new Date(fechaIni);
+                d.setFullYear(d.getFullYear() + 1);
+                d.setDate(d.getDate() - 1);
+                let fechaVto = d.toISOString().split('T')[0];
+                $('#valFechaVto').val(fechaVto);
+                $('#valFechaAviso').val(calcularFechaAviso(fechaVto));
+            }
+        }
+
+        $(document).ready(function() {
+            aplicarFiltros();
+            cargarTablaPagos();
+
+            $('#pagoValorDescProp, #pagoDescuento').on('input keyup change', calcularLiquidacionPropietario);
+
+            $('#tamanioPaginaPagos').on('change', function() {
+                paginaActualPagos = 1;
+                filtrarYMostrarPagos();
+            });
+
+            function obtenerContratosFiltrados() {
+                let textoGlobal = $('#filtroGlobal').val().toLowerCase().trim();
+                let estadoSel = $('#filtroEstado').val();
+                let diaSel = $('#filtroDiaLimite').val();
+                let concepto = $('#conceptoFecha').val();
+                let minFecha = $('#minFecha').val();
+                let maxFecha = $('#maxFecha').val();
+
+                return datosBase.filter(item => {
+                    let matchGlobal = true;
+                    if(textoGlobal) {
+                        // Incluye TODOS los datos de identidad (arrendatario, codeudor, propietario y
+                        // titular) para que buscar una cédula, celular o correo la encuentre sin
+                        // importar en cuál de los tres roles esté registrada.
+                        let cadena = `${item.contrato} ${item.estudio} ${item.arrendatario} ${item.cedulaArr} ${item.celArr} ${item.correoArr} ${item.codeudor} ${item.cedulaCodeudor} ${item.celCodeudor} ${item.correoCodeudor} ${item.propietario} ${item.cedulaProp} ${item.celProp} ${item.correoProp} ${item.titularConsignar} ${item.cedulaTitular} ${item.direccion}`.toLowerCase();
+                        matchGlobal = cadena.includes(textoGlobal);
+                    }
+                    let matchEstado = estadoSel ? (item.estado.toLowerCase() === estadoSel.toLowerCase()) : true;
+                    let matchDia = diaSel ? (item.diaLimite.toString() === diaSel.toString()) : true;
+                    
+                    let fechaAProbar = concepto === 'ini' ? item.fechaIni : (concepto === 'aviso' ? item.fechaAviso : item.fechaVto);
+                    let matchFechas = true;
+                    if(minFecha && fechaAProbar) matchFechas = matchFechas && (fechaAProbar >= minFecha);
+                    if(maxFecha && fechaAProbar) matchFechas = matchFechas && (fechaAProbar <= maxFecha);
+
+                    return matchGlobal && matchEstado && matchDia && matchFechas;
+                });
+            }
+
+            function aplicarFiltros() {
+                paginaActual = 1;
+                renderizarTablaPaginada();
+            }
+            // Se expone en window porque "restaurarDatosOriginales" y "eliminarContrato"
+            // están fuera de este closure y necesitan poder refrescar la tabla de contratos.
+            window.aplicarFiltros = aplicarFiltros;
+
+            window.cambiarPagina = function(p) {
+                paginaActual = p;
+                renderizarTablaPaginada();
+            }
+
+            function renderizarTablaPaginada() {
+                let filtrados = obtenerContratosFiltrados();
+                let tamanioVal = $('#tamanioPagina').val();
+                let tamanio = tamanioVal === "150" ? filtrados.length : (parseInt(tamanioVal) || 10);
+                let totalRegistros = filtrados.length;
+                let totalPaginas = tamanioVal === "150" ? 1 : (Math.ceil(totalRegistros / tamanio) || 1);
+
+                if(paginaActual > totalPaginas) paginaActual = totalPaginas;
+
+                let inicio = tamanioVal === "150" ? 0 : (paginaActual - 1) * tamanio;
+                let fin = tamanioVal === "150" ? totalRegistros : inicio + tamanio;
+                let paginados = filtrados.slice(inicio, fin);
+
+                renderizarTablaContratos(paginados, totalRegistros);
+                renderizarControlesPaginacion(totalPaginas, totalRegistros, inicio, fin);
+            }
+
+            $('#btnBuscarContratos').on('click', aplicarFiltros);
+            $('#filtroGlobal, #filtroDiaLimite').on('keyup', function(e) { if (e.key === 'Enter') aplicarFiltros(); });
+            $('#filtroEstado, #filtroDiaLimite, #conceptoFecha, #minFecha, #maxFecha, #tamanioPagina').on('change', aplicarFiltros);
+            
+            $('#btnLimpiarFiltros').on('click', function() {
+                $('#filtroGlobal, #minFecha, #maxFecha').val('');
+                $('#filtroEstado, #filtroDiaLimite').val('');
+                aplicarFiltros();
+            });
+
+            $('#btnBuscarPagos').on('click', function() {
+                paginaActualPagos = 1;
+                filtrarYMostrarPagos();
+            });
+
+            $('#filtroMes, #filtroEstadoPago').on('change', function() {
+                paginaActualPagos = 1;
+                filtrarYMostrarPagos();
+            });
+
+            $('#filtroDiaDesde, #filtroDiaHasta, #filtroPagosGlobal').on('keyup change', function(e) {
+                if (e.key === 'Enter' || e.type === 'change') {
+                    paginaActualPagos = 1;
+                    filtrarYMostrarPagos();
+                }
+            });
+
+            $('#btnLimpiarFiltrosPagos').on('click', function() {
+                $('#filtroPagosGlobal, #filtroDiaDesde, #filtroDiaHasta').val('');
+                $('#filtroMes, #filtroEstadoPago').val('');
+                paginaActualPagos = 1;
+                cargarTablaPagos(datosPagos);
+            });
+
+            $('#inputBusquedaCedula').on('input', function() {
+                let val = $(this).val().toLowerCase().trim();
+                let sugerenciasBox = $('#sugerenciasCedula');
+                sugerenciasBox.html('');
+                if(val.length < 1) { sugerenciasBox.hide(); return; }
+
+                let filtrados = datosBase.filter(c => c.arrendatario.toLowerCase().includes(val) || (c.cedulaArr && c.cedulaArr.toLowerCase().includes(val)));
+                if(filtrados.length > 0) {
+                    filtrados.forEach(c => {
+                        sugerenciasBox.append(`<div class="autocomplete-suggestion" 
+                            data-nombre="${c.arrendatario}" 
+                            data-cedulaarr="${c.cedulaArr || ''}"
+                            data-propietario="${c.propietario || 'INDEPENDIENTE'}" 
+                            data-cedulaprop="${c.cedulaProp || ''}"
+                            data-titular="${c.titularConsignar || c.propietario || 'INDEPENDIENTE'}"
+                            data-cedulatitular="${c.cedulaTitular || c.cedulaProp || ''}"
+                            data-banco="${c.bancoProp || ''}" 
+                            data-cuenta="${c.cuentaProp || ''}" 
+                            data-contrato="${c.contrato}" 
+                            data-direccion="${c.direccion}" 
+                            data-canon="${c.rawCanon || 0}">
+                            <strong>Cédula: ${c.cedulaArr || 'N/A'}</strong> - ${c.arrendatario} <span class="text-muted">(Contrato #${c.contrato})</span>
+                        </div>`);
+                    });
+                    sugerenciasBox.show();
+                } else { sugerenciasBox.hide(); }
+            });
+
+            $(document).on('click', '.autocomplete-suggestion', function() {
+                $('#inputBusquedaCedula').val($(this).data('nombre'));
+                $('#pagoCedulaArr').val($(this).data('cedulaarr'));
+                $('#pagoPropietario').val($(this).data('propietario'));
+                $('#pagoCedulaProp').val($(this).data('cedulaprop'));
+                $('#pagoTitularConsignar').val($(this).data('titular'));
+                $('#pagoCedulaTitular').val($(this).data('cedulatitular'));
+                $('#pagoBancoProp').val($(this).data('banco'));
+                $('#pagoCuentaProp').val($(this).data('cuenta'));
+                $('#pagoContratoDisplay').val("#" + $(this).data('contrato'));
+                $('#pagoContratoAsociado').val($(this).data('contrato'));
+                $('#pagoDireccionInmueble').val($(this).data('direccion'));
+                $('#pagoCanon').val(formatearMonedaInput($(this).data('canon')));
+                $('#sugerenciasCedula').hide();
+                calcularLiquidacionPropietario();
+                // Si ya existe un recibo guardado para este contrato y el período
+                // (mes/año) que esté seleccionado en el formulario, lo carga completo
+                // (incluida la factura original) en vez de dejarlo en blanco.
+                if (modoNuevoRecibo) intentarCargarPagoExistente();
+            });
+
+            // Si el usuario cambia el mes o el año después de elegir el arrendatario
+            // (mientras está REGISTRANDO uno nuevo), vuelve a revisar si ese período ya
+            // tiene un recibo. Al EDITAR uno puntual (modoNuevoRecibo = false) esto no
+            // aplica, para no resetear los datos que se estén corrigiendo.
+            $('#pagoMes, #pagoAno').on('change', function() {
+                if (modoNuevoRecibo) intentarCargarPagoExistente();
+            });
+
+            // GUARDAR RECIBO DE CAJA CON VALIDACIÓN DE MES/AÑO
+            $('#btnGuardarPago').on('click', function() {
+                let indexPago = $('#editIndexPago').val();
+                let contrato = $('#pagoContratoAsociado').val();
+                let arrendatario = $('#inputBusquedaCedula').val();
+                let cedulaArr = $('#pagoCedulaArr').val();
+                let fechaPago = $('#pagoFechaPago').val();
+                let mes = $('#pagoMes').val();
+                let ano = $('#pagoAno').val().toString();
+
+                if(!contrato || !arrendatario || !fechaPago) {
+                    alert('Complete los campos obligatorios (*).'); return;
+                }
+
+                // La validación de duplicados solo aplica al REGISTRAR un recibo nuevo (no al
+                // editar uno existente). Si ya hay un recibo para este arrendatario en el mismo
+                // período, en vez de bloquear el guardado se le muestra el historial del contrato
+                // y se le pregunta si quiere ACTUALIZAR ese recibo existente con los datos que
+                // acaba de digitar (en lugar de crear uno duplicado).
+                if (indexPago == -1) {
+                    let indexExistente = datosPagos.findIndex(p => {
+                        return (p.contrato === contrato || p.arrendatario.toLowerCase() === arrendatario.toLowerCase())
+                               && p.mes === mes
+                               && p.ano.toString() === ano;
+                    });
+
+                    if (indexExistente !== -1) {
+                        let historialContrato = datosPagos
+                            .filter(p => p.contrato === contrato)
+                            .slice()
+                            .sort((a, b) => (b.fechaPago || '').localeCompare(a.fechaPago || ''))
+                            .map(p => {
+                                let total = Number(p.totalConsignado) || 0;
+                                return `• ${p.mes}/${p.ano} — $ ${total.toLocaleString()} — ${p.estadoArr || 'CONFIRMADO'} (recibo: ${p.fechaPago || 'sin fecha'})`;
+                            })
+                            .join('\n');
+
+                        let mensaje = `Ya existe un recibo de caja para ${arrendatario} en el período ${mes} / ${ano}.\n\n`
+                            + `Historial de recibos del contrato #${contrato}:\n${historialContrato}\n\n`
+                            + `¿Deseas ACTUALIZAR ese recibo de ${mes}/${ano} con los datos que acabas de ingresar?\n`
+                            + `(Aceptar = actualizar el existente · Cancelar = no guardar nada)`;
+
+                        if (!confirm(mensaje)) return;
+
+                        // Convierte el guardado en una edición del recibo ya existente
+                        indexPago = indexExistente;
+                    }
+                }
+
+                let pagoObj = {
+                    arrendatario: arrendatario,
+                    cedulaArr: cedulaArr,
+                    propietario: $('#pagoPropietario').val() || 'Sin Especificar',
+                    cedulaProp: $('#pagoCedulaProp').val() || '',
+                    titularConsignar: $('#pagoTitularConsignar').val() || $('#pagoPropietario').val() || 'Sin Especificar',
+                    cedulaTitular: $('#pagoCedulaTitular').val() || '',
+                    bancoProp: $('#pagoBancoProp').val() || '',
+                    cuentaProp: $('#pagoCuentaProp').val() || '',
+                    numeroFactura: $('#pagoNumeroFactura').val() || '',
+                    fechaFactura: $('#pagoFechaFactura').val() || '',
+                    fechaPago: fechaPago,
+                    ano: ano,
+                    mes: mes,
+                    contrato: contrato,
+                    direccion: $('#pagoDireccionInmueble').val(),
+                    formaPago: $('#pagoFormaPago').val(),
+                    estadoArr: $('#pagoEstadoArr').val(),
+                    canon: obtenerValorLimpio($('#pagoCanon').val()),
+                    conceptoDescArr: $('#pagoConceptoDescArr').val(),
+                    descuento: obtenerValorLimpio($('#pagoDescuento').val()),
+                    totalConsignado: obtenerValorLimpio($('#pagoTotalConsignado').val()),
+                    tipoLiquidacion: $('#pagoTipoLiquidacion').val(),
+                    comision: obtenerValorLimpio($('#pagoComision').val()),
+                    valor4x1000: obtenerValorLimpio($('#pagoValor4x1000').val()),
+                    conceptoDescProp: $('#pagoConceptoDescProp').val(),
+                    valorDescProp: obtenerValorLimpio($('#pagoValorDescProp').val()),
+                    netoPropietario: obtenerValorLimpio($('#pagoNetoPropietario').val()),
+                    fechaProp: $('#pagoFechaProp').val(),
+                    formaProp: $('#pagoFormaProp').val(),
+                    estadoProp: $('#pagoEstadoProp').val(),
+                    observaciones: $('#pagoObservaciones').val()
+                };
+
+                if(indexPago == -1) datosPagos.unshift(pagoObj);
+                else datosPagos[indexPago] = pagoObj;
+
+                guardarEnLocalStorage();
+                $('#modalNuevoPago').modal('hide');
+                cargarTablaPagos();
+                alert('¡Recibo y liquidación guardados con éxito!');
+            });
+
+            $('#btnGuardar').on('click', function() {
+                let index = $('#editIndex').val();
+                let rawValCanon = obtenerValorLimpio($('#valCanonNumerico').val());
+                let rawValorRenovacion = obtenerValorLimpio($('#valValorRenovacion').val());
+                let nuevoObj = {
+                    item: index == -1 ? datosBase.length + 1 : datosBase[index].item,
+                    contrato: $('#valContrato').val(),
+                    estudio: $('#valEstudio').val() || 'N/A',
+                    estado: $('#valEstado').val(),
+                    arrendatario: $('#valArrendatario').val(),
+                    cedulaArr: $('#valCedulaArr').val(),
+                    celArr: $('#valCelArr').val() || '',
+                    correoArr: $('#valCorreoArr').val() || '',
+                    // Codeudor / fiador del contrato (opcional)
+                    codeudor: $('#valCodeudor').val() || '',
+                    cedulaCodeudor: $('#valCedulaCodeudor').val() || '',
+                    celCodeudor: $('#valCelCodeudor').val() || '',
+                    correoCodeudor: $('#valCorreoCodeudor').val() || '',
+                    propietario: $('#valPropietario').val(),
+                    cedulaProp: $('#valCedulaProp').val() || '',
+                    celProp: $('#valCelProp').val() || '',
+                    correoProp: $('#valCorreoProp').val() || '',
+                    titularConsignar: $('#valTitularConsignar').val() || $('#valPropietario').val() || '',
+                    cedulaTitular: $('#valCedulaTitular').val() || '',
+                    bancoProp: $('#valBancoProp').val() || '',
+                    cuentaProp: $('#valCuentaProp').val() || '',
+                    direccion: $('#valDireccion').val(),
+                    diaLimite: $('#valDiaLimite').val(),
+                    fechaIni: $('#valFechaIni').val(),
+                    fechaVto: $('#valFechaVto').val(),
+                    fechaAviso: $('#valFechaAviso').val() || calcularFechaAviso($('#valFechaVto').val()),
+                    canon: "$ " + formatearMonedaInput(rawValCanon),
+                    rawCanon: rawValCanon,
+                    // Frecuencia con la que paga el arrendatario (Mensual/Anual) y datos
+                    // informativos de la próxima renovación del contrato (fecha y nuevo canon)
+                    frecuenciaPago: $('#valFrecuenciaPago').val() || 'Mensual',
+                    fechaRenovacion: $('#valFechaRenovacion').val() || '',
+                    valorRenovacion: rawValorRenovacion ? ("$ " + formatearMonedaInput(rawValorRenovacion)) : '',
+                    rawValorRenovacion: rawValorRenovacion
+                };
+
+                if(!nuevoObj.contrato || !nuevoObj.arrendatario || !nuevoObj.direccion) {
+                    alert('Complete los campos obligatorios.'); return;
+                }
+
+                if(index == -1) datosBase.push(nuevoObj);
+                else datosBase[index] = nuevoObj;
+
+                guardarEnLocalStorage();
+                $('#modalAdicionar').modal('hide');
+                aplicarFiltros();
+                alert('¡Contrato guardado con éxito!');
+            });
+        });
+
+        function renderizarTablaContratos(lista, total) {
+            let tbody = "";
+            $('#contadorContratos').text(total);
+            if(lista.length === 0) {
+                tbody = `<tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron contratos.</td></tr>`;
+            } else {
+                lista.forEach((item) => {
+                    let originalIndex = datosBase.indexOf(item);
+                    let badgeClass = item.estado === "Activo" ? "badge-status-active" : "badge-status-inactive";
+                    tbody += `
+                        <tr>
+                            <td><strong style="color: var(--brand-navy);">#${item.contrato}</strong></td>
+                            <td><span class="badge ${badgeClass}">${item.estado}</span></td>
+                            <td><strong class="text-dark">${item.arrendatario}</strong></td>
+                            <td>${item.direccion}</td>
+                            <td><span class="text-secondary">${item.propietario || 'N/A'}</span></td>
+                            <td class="fw-bold text-success">${item.canon}</td>
+                            <td><span class="badge bg-light text-dark border">Día ${item.diaLimite}</span></td>
+                            <td class="text-center">
+                                <button class="btn btn-outline-info btn-action" onclick="abrirModalDetalle(${originalIndex})" title="Ver Detalles"><i class="fas fa-eye"></i></button>
+                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditar(${originalIndex})" title="Editar Contrato"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-danger btn-action" onclick="eliminarContrato(${originalIndex})" title="Eliminar Contrato"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            $('#cuerpoTabla').html(tbody);
+        }
+
+        function renderizarControlesPaginacion(totalPaginas, totalRegistros, inicio, fin) {
+            let finReal = fin > totalRegistros ? totalRegistros : fin;
+            let inicioReal = totalRegistros === 0 ? 0 : inicio + 1;
+            $('#textoPaginacionInfo').text(`Mostrando ${inicioReal} a ${finReal} de ${totalRegistros} contratos`);
+
+            if($('#tamanioPagina').val() === "150") {
+                $('#paginacionControles').html('');
+                return;
+            }
+
+            let html = "";
+            for(let i=1; i<=totalPaginas; i++) {
+                let active = (i === paginaActual) ? "btn-luxury-primary" : "btn-outline-secondary";
+                html += `<button class="btn btn-sm ${active}" onclick="cambiarPagina(${i})">${i}</button>`;
+            }
+            $('#paginacionControles').html(html);
+        }
+
+        function cargarTablaPagos(lista = datosPagos) {
+            let tamanioVal = $('#tamanioPaginaPagos').val();
+            let tamanio = tamanioVal === "1000" ? lista.length : (parseInt(tamanioVal) || 10);
+            let totalRegistros = lista.length;
+            let totalPaginas = tamanioVal === "1000" ? 1 : (Math.ceil(totalRegistros / tamanio) || 1);
+
+            if (paginaActualPagos > totalPaginas) paginaActualPagos = totalPaginas;
+
+            let inicio = tamanioVal === "1000" ? 0 : (paginaActualPagos - 1) * tamanio;
+            let fin = tamanioVal === "1000" ? totalRegistros : inicio + tamanio;
+            let paginados = lista.slice(inicio, fin);
+
+            let tbody = "";
+            if (totalRegistros === 0) {
+                tbody = `<tr><td colspan="14" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
+            } else {
+                paginados.forEach((p) => {
+                    let originalIndex = datosPagos.indexOf(p);
+                    let badgeLiq = (p.tipoLiquidacion === 'anual') ? 'bg-warning text-dark' : ((p.tipoLiquidacion === 'no_aplica') ? 'bg-secondary text-white' : 'bg-info text-dark');
+                    let totalConsignadoNum = Number(p.totalConsignado) || 0;
+                    let netoPropNum = Number(p.netoPropietario) || 0;
+                    
+                    let badgeArrClass = (p.estadoArr === 'PENDIENTE') ? 'badge-status-pending' : 'badge-status-active';
+                    let badgePropClass = (p.estadoProp === 'PENDIENTE') ? 'badge-status-pending' : 'badge-status-active';
+
+                    // Búsqueda del día límite correspondiente
+                    let matchContrato = datosBase.find(c => c.contrato === p.contrato);
+                    let diaLimiteVal = matchContrato ? matchContrato.diaLimite : '5';
+
+                    tbody += `
+                        <tr>
+                            <td><strong>${p.arrendatario}</strong></td>
+                            <td><strong>#${p.contrato}</strong></td>
+                            <td>${p.numeroFactura || '<span class="text-muted">-</span>'}</td>
+                            <td><span class="badge bg-light text-dark border">Día ${diaLimiteVal}</span></td>
+                            <td><span class="badge bg-light text-dark border">${p.formaPago || 'AV VILLAS'}</span></td>
+                            <td><span class="badge ${badgeArrClass}">${p.estadoArr || 'CONFIRMADO'}</span></td>
+                            <td><strong style="color: var(--brand-navy);">${p.propietario || 'N/A'}</strong></td>
+                            <td>${p.fechaPago}</td>
+                            <td>${p.ano} / ${p.mes}</td>
+                            <td class="fw-bold text-success">$ ${totalConsignadoNum.toLocaleString()}</td>
+                            <td class="fw-bold text-primary">$ ${netoPropNum.toLocaleString()} <span class="badge ${badgeLiq} ms-1" style="font-size:0.65rem;">${(p.tipoLiquidacion || 'mensual').replace('_', ' ').toUpperCase()}</span></td>
+                            <td>${p.fechaProp || '<span class="text-muted">Pendiente</span>'}</td>
+                            <td><span class="badge ${badgePropClass}">${p.estadoProp || 'CONFIRMADO'}</span></td>
+                            <td class="text-center">
+                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditarPago(${originalIndex})" title="Editar Recibo"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-primary btn-action" onclick="imprimirComprobante(${originalIndex})" title="Imprimir Comprobante Propietario"><i class="fas fa-print"></i></button>
+                                <button class="btn btn-outline-danger btn-action" onclick="eliminarPago(${originalIndex})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            $('#cuerpoTablaPagos').html(tbody);
+            renderizarControlesPaginacionPagos(totalPaginas, totalRegistros, inicio, fin);
+        }
+
+        function renderizarControlesPaginacionPagos(totalPaginas, totalRegistros, inicio, fin) {
+            let finReal = fin > totalRegistros ? totalRegistros : fin;
+            let inicioReal = totalRegistros === 0 ? 0 : inicio + 1;
+            $('#textoPaginacionPagosInfo').text(`Mostrando ${inicioReal} a ${finReal} de ${totalRegistros} recibos`);
+
+            if ($('#tamanioPaginaPagos').val() === "1000") {
+                $('#paginacionPagosControles').html('');
+                return;
+            }
+
+            let html = "";
+            for (let i = 1; i <= totalPaginas; i++) {
+                let active = (i === paginaActualPagos) ? "btn-luxury-primary" : "btn-outline-secondary";
+                html += `<button class="btn btn-sm ${active}" onclick="cambiarPaginaPagos(${i})">${i}</button>`;
+            }
+            $('#paginacionPagosControles').html(html);
+        }
+
+        window.cambiarPaginaPagos = function(p) {
+            paginaActualPagos = p;
+            filtrarYMostrarPagos();
+        };
+
+        function filtrarYMostrarPagos() {
+            let val = $('#filtroPagosGlobal').val().toLowerCase();
+            let diaDesde = parseInt($('#filtroDiaDesde').val());
+            let diaHasta = parseInt($('#filtroDiaHasta').val());
+            let mes = $('#filtroMes').val();
+            let estado = $('#filtroEstadoPago').val();
+
+            let filtrados = datosPagos.filter(p => {
+                let textoMatch = `${p.arrendatario} ${p.cedulaArr} ${p.propietario} ${p.cedulaProp} ${p.titularConsignar} ${p.cedulaTitular} ${p.contrato} ${p.formaPago} ${p.formaProp} ${p.numeroFactura || ''}`.toLowerCase().includes(val);
+                let mMatch = mes ? p.mes === mes : true;
+                let eMatch = estado ? (p.estadoArr === estado) : true;
+
+                // Validación del Rango del Día Límite
+                let dMatch = true;
+                let matchContrato = datosBase.find(c => c.contrato === p.contrato);
+                let diaLimiteVal = matchContrato ? parseInt(matchContrato.diaLimite) : 5;
+
+                if (!isNaN(diaDesde)) {
+                    dMatch = dMatch && (diaLimiteVal >= diaDesde);
+                }
+                if (!isNaN(diaHasta)) {
+                    dMatch = dMatch && (diaLimiteVal <= diaHasta);
+                }
+
+                return textoMatch && mMatch && eMatch && dMatch;
+            });
+            cargarTablaPagos(filtrados);
+        }
+
+        function abrirModalDetalle(index) {
+            let item = datosBase[index];
+            $('#detContrato').text(item.contrato || '-');
+            $('#detEstudio').text(item.estudio || '-');
+            $('#detEstado').html(`<span class="badge ${item.estado === 'Activo' ? 'badge-status-active' : 'badge-status-inactive'}">${item.estado}</span>`);
+            $('#detFechaIni').text(item.fechaIni || '-');
+            $('#detFechaVto').text(item.fechaVto || '-');
+            $('#detFechaAviso').text(item.fechaAviso || '-');
+            $('#detArrendatario').text(item.arrendatario || '-');
+            $('#detCedulaArr').text(item.cedulaArr || 'N/A');
+            $('#detCelArr').text(item.celArr || 'N/A');
+            $('#detCorreoArr').text(item.correoArr || 'N/A');
+            $('#detCodeudor').text(item.codeudor || 'No registra');
+            $('#detCedulaCodeudor').text(item.cedulaCodeudor || 'N/A');
+            $('#detCelCodeudor').text(item.celCodeudor || 'N/A');
+            $('#detCorreoCodeudor').text(item.correoCodeudor || 'N/A');
+            $('#detPropietario').text(item.propietario || '-');
+            $('#detCedulaProp').text(item.cedulaProp || 'N/A');
+            $('#detCelProp').text(item.celProp || 'N/A');
+            $('#detCorreoProp').text(item.correoProp || 'N/A');
+            $('#detTitularConsignar').text(item.titularConsignar || item.propietario || '-');
+            $('#detCedulaTitular').text(item.cedulaTitular || item.cedulaProp || 'N/A');
+            $('#detBancoProp').text(item.bancoProp || 'No especificado');
+            $('#detCuentaProp').text(item.cuentaProp || 'No especificado');
+            $('#detDireccion').text(item.direccion || '-');
+            $('#detFrecuenciaPago').text(item.frecuenciaPago || 'Mensual');
+            $('#detFechaRenovacion').text(item.fechaRenovacion || 'No definida');
+            $('#detValorRenovacion').text(item.rawValorRenovacion ? (item.valorRenovacion || ('$ ' + formatearMonedaInput(item.rawValorRenovacion))) : 'No definido');
+
+            // Historial de Pagos del Inmueble: todos los recibos de este contrato, del más reciente al más antiguo
+            let historial = datosPagos
+                .filter(p => p.contrato === item.contrato)
+                .slice()
+                .sort((a, b) => (b.fechaPago || '').localeCompare(a.fechaPago || ''));
+
+            let filasHistorial = '';
+            if (historial.length === 0) {
+                filasHistorial = `<tr><td colspan="6" class="text-center text-muted py-3">Sin pagos registrados para este inmueble.</td></tr>`;
+            } else {
+                historial.forEach(p => {
+                    let badgeArr = (p.estadoArr === 'PENDIENTE') ? 'badge-status-pending' : 'badge-status-active';
+                    let badgeProp = (p.estadoProp === 'PENDIENTE') ? 'badge-status-pending' : 'badge-status-active';
+                    filasHistorial += `
+                        <tr>
+                            <td>${p.ano} / ${p.mes}</td>
+                            <td>${p.fechaPago || '-'}</td>
+                            <td><span class="badge ${badgeArr}">${p.estadoArr || 'CONFIRMADO'}</span></td>
+                            <td class="text-end fw-bold text-success">$ ${(Number(p.totalConsignado) || 0).toLocaleString()}</td>
+                            <td class="text-end fw-bold text-primary">$ ${(Number(p.netoPropietario) || 0).toLocaleString()}</td>
+                            <td><span class="badge ${badgeProp}">${p.estadoProp || 'CONFIRMADO'}</span></td>
+                        </tr>
+                    `;
+                });
+            }
+            $('#detHistorialPagos').html(filasHistorial);
+
+            $('#modalVerDetalle').modal('show');
+        }
+
+        function abrirModalEditar(index) {
+            let item = datosBase[index];
+            $('#editIndex').val(index);
+            $('#valContrato').val(item.contrato);
+            $('#valEstudio').val(item.estudio || '');
+            $('#valEstado').val(item.estado || 'Activo');
+            $('#valArrendatario').val(item.arrendatario || '');
+            $('#valCedulaArr').val(item.cedulaArr || '');
+            $('#valCelArr').val(item.celArr || '');
+            $('#valCorreoArr').val(item.correoArr || '');
+            $('#valCodeudor').val(item.codeudor || '');
+            $('#valCedulaCodeudor').val(item.cedulaCodeudor || '');
+            $('#valCelCodeudor').val(item.celCodeudor || '');
+            $('#valCorreoCodeudor').val(item.correoCodeudor || '');
+            $('#valPropietario').val(item.propietario || '');
+            $('#valCedulaProp').val(item.cedulaProp || '');
+            $('#valCelProp').val(item.celProp || '');
+            $('#valCorreoProp').val(item.correoProp || '');
+            $('#valTitularConsignar').val(item.titularConsignar || '');
+            $('#valCedulaTitular').val(item.cedulaTitular || '');
+            $('#valBancoProp').val(item.bancoProp || '');
+            $('#valCuentaProp').val(item.cuentaProp || '');
+            $('#valDireccion').val(item.direccion || '');
+            $('#valCanonNumerico').val(formatearMonedaInput(item.rawCanon || 0));
+            $('#valDiaLimite').val(item.diaLimite || '5');
+            $('#valFechaIni').val(item.fechaIni || '');
+            $('#valFechaVto').val(item.fechaVto || '');
+            $('#valFechaAviso').val(item.fechaAviso || calcularFechaAviso(item.fechaVto));
+            $('#valFrecuenciaPago').val(item.frecuenciaPago || 'Mensual');
+            $('#valFechaRenovacion').val(item.fechaRenovacion || '');
+            $('#valValorRenovacion').val(item.rawValorRenovacion ? formatearMonedaInput(item.rawValorRenovacion) : '');
+
+            $('#modalAdicionarLabel').html('<i class="fas fa-edit me-2" style="color: var(--brand-gold);"></i>Modificar Contrato');
+            $('#modalAdicionar').modal('show');
+        }
+
+        function eliminarContrato(index) {
+            if(confirm('¿Está seguro de eliminar este contrato?')) {
+                datosBase.splice(index, 1);
+                guardarEnLocalStorage();
+                aplicarFiltros();
+            }
+        }
+
+        // Vuelca los datos de un recibo ya guardado (p) en el formulario, incluyendo
+        // el número/fecha de factura originales. Se usa tanto al abrir "Editar" desde
+        // la tabla como al detectar, mientras se está registrando uno nuevo, que ya
+        // existe un recibo para el arrendatario/contrato y período seleccionados.
+        function poblarFormularioPagoDesdeRegistro(p, index) {
+            // Muchos recibos importados del histórico de Excel no traen banco/cuenta
+            // propios (ese dato solía diligenciarse solo en el contrato). Por eso, si
+            // el recibo no lo tiene, se completa con lo que sí tenga su contrato en
+            // vez de dejar el campo vacío.
+            let contratoRelacionado = datosBase.find(c => c.contrato === p.contrato);
+
+            $('#editIndexPago').val(index);
+            $('#inputBusquedaCedula').val(p.arrendatario);
+            $('#pagoCedulaArr').val(p.cedulaArr || '');
+            $('#pagoPropietario').val(p.propietario || (contratoRelacionado ? contratoRelacionado.propietario : '') || '');
+            $('#pagoCedulaProp').val(p.cedulaProp || (contratoRelacionado ? contratoRelacionado.cedulaProp : '') || '');
+            $('#pagoTitularConsignar').val(p.titularConsignar || (contratoRelacionado ? contratoRelacionado.titularConsignar : '') || p.propietario || '');
+            $('#pagoCedulaTitular').val(p.cedulaTitular || (contratoRelacionado ? contratoRelacionado.cedulaTitular : '') || p.cedulaProp || '');
+            $('#pagoBancoProp').val(p.bancoProp || (contratoRelacionado ? contratoRelacionado.bancoProp : '') || '');
+            $('#pagoCuentaProp').val(p.cuentaProp || (contratoRelacionado ? contratoRelacionado.cuentaProp : '') || '');
+            $('#pagoContratoAsociado').val(p.contrato);
+            $('#pagoContratoDisplay').val("#" + p.contrato);
+            $('#pagoDireccionInmueble').val(p.direccion || '');
+            $('#pagoNumeroFactura').val(p.numeroFactura || '');
+            $('#pagoFechaFactura').val(p.fechaFactura || '');
+            $('#pagoFechaPago').val(p.fechaPago || '');
+            $('#pagoMes').val(p.mes || 'Agosto');
+            $('#pagoAno').val(p.ano || 2026);
+            $('#pagoFormaPago').val(p.formaPago || 'AV VILLAS');
+            $('#pagoEstadoArr').val(p.estadoArr || 'CONFIRMADO');
+            $('#pagoTipoLiquidacion').val(p.tipoLiquidacion || 'mensual');
+            $('#aplicar4x1000').prop('checked', (p.valor4x1000 > 0));
+            $('#pagoCanon').val(formatearMonedaInput(p.canon || 0));
+            $('#pagoConceptoDescArr').val(p.conceptoDescArr || '');
+            $('#pagoDescuento').val(formatearMonedaInput(p.descuento || 0));
+            $('#pagoTotalConsignado').val(formatearMonedaInput(p.totalConsignado || 0));
+            $('#pagoComision').val(formatearMonedaInput(p.comision || 0));
+            $('#pagoValor4x1000').val("$ " + formatearMonedaInput(p.valor4x1000 || 0));
+            $('#pagoConceptoDescProp').val(p.conceptoDescProp || '');
+            $('#pagoValorDescProp').val(formatearMonedaInput(p.valorDescProp || 0));
+            $('#pagoFechaProp').val(p.fechaProp || '');
+            $('#pagoFormaProp').val(p.formaProp || 'AV VILLAS');
+            $('#pagoEstadoProp').val(p.estadoProp || 'CONFIRMADO');
+            $('#pagoObservaciones').val(p.observaciones || '');
+
+            $('#modalPagoTitulo').html('<i class="fas fa-edit me-2" style="color: var(--brand-gold);"></i>Modificar Recibo y Liquidación Propietario');
+            calcularLiquidacionPropietario();
+        }
+
+        // Limpia los campos propios del recibo (factura, descuentos, liquidación...)
+        // cuando el período seleccionado deja de coincidir con uno ya existente,
+        // sin borrar los datos del arrendatario/contrato ya elegidos por autocompletar.
+        function resetearCamposPeriodoPago() {
+            $('#editIndexPago').val('-1');
+            $('#pagoNumeroFactura').val('');
+            $('#pagoFechaFactura').val('');
+            $('#pagoFechaPago').val('');
+            $('#pagoConceptoDescArr').val('');
+            $('#pagoDescuento').val('0');
+            $('#pagoTipoLiquidacion').val('mensual');
+            $('#aplicar4x1000').prop('checked', false);
+            $('#pagoConceptoDescProp').val('');
+            $('#pagoValorDescProp').val('0');
+            $('#pagoFechaProp').val('');
+            $('#pagoFormaPago').val('AV VILLAS');
+            $('#pagoEstadoArr').val('CONFIRMADO');
+            $('#pagoFormaProp').val('AV VILLAS');
+            $('#pagoEstadoProp').val('CONFIRMADO');
+            $('#pagoObservaciones').val('');
+            $('#modalPagoTitulo').html('<i class="fas fa-receipt me-2" style="color: var(--brand-gold);"></i>Registrar Recibo de Caja y Liquidación Propietario');
+            calcularLiquidacionPropietario();
+        }
+
+        // Revisa si, para el contrato y el período (mes/año) actualmente seleccionados
+        // en el formulario, ya existe un recibo guardado. Si lo hay, carga sus datos
+        // completos (incluida la factura original) para editarlo; si no, deja el
+        // formulario listo para un recibo nuevo en ese período.
+        function intentarCargarPagoExistente() {
+            let contrato = $('#pagoContratoAsociado').val();
+            if (!contrato) return;
+
+            let mes = $('#pagoMes').val();
+            let ano = $('#pagoAno').val().toString();
+            let indexExistente = datosPagos.findIndex(p => p.contrato === contrato && p.mes === mes && p.ano.toString() === ano);
+            let indexActual = parseInt($('#editIndexPago').val(), 10);
+
+            if (indexExistente !== -1) {
+                if (indexActual !== indexExistente) {
+                    poblarFormularioPagoDesdeRegistro(datosPagos[indexExistente], indexExistente);
+                }
+            } else if (indexActual !== -1) {
+                resetearCamposPeriodoPago();
+            }
+        }
+
+        function abrirModalEditarPago(index) {
+            modoNuevoRecibo = false;
+            poblarFormularioPagoDesdeRegistro(datosPagos[index], index);
+            $('#modalNuevoPago').modal('show');
+        }
+
+        function eliminarPago(index) {
+            if(confirm('¿Está seguro de eliminar este registro?')) {
+                datosPagos.splice(index, 1);
+                guardarEnLocalStorage();
+                cargarTablaPagos();
+            }
+        }
+
+        function imprimirComprobante(index) {
+            let p = datosPagos[index];
+            let descPropHtml = p.valorDescProp > 0 
+                ? `<tr><td>Descuento Propietario (${p.conceptoDescProp || 'Concepto Varios'})</td><td class="text-end text-danger">- $ ${(Number(p.valorDescProp)||0).toLocaleString()}</td></tr>`
+                : '';
+
+            let descArrHtml = p.descuento > 0
+                ? `<tr><td>Descuento Arrendatario (${p.conceptoDescArr || 'Descuento Aplicado'})</td><td class="text-end text-danger">- $ ${(Number(p.descuento)||0).toLocaleString()}</td></tr>`
+                : '';
+
+            let w = window.open('', '_blank', 'width=780,height=720');
+            w.document.write(`
+                <html>
+                <head>
+                    <title>Comprobante Propietario - Bienes Raíces White</title>
+                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600&display=swap" rel="stylesheet">
+                    <style>
+                        body { font-family: 'Plus Jakarta Sans', sans-serif; color: #1E293B; }
+                        h4 { font-family: 'Cormorant Garamond', serif; font-weight: 700; letter-spacing: 1px; color: #0B132B; }
+                        .header-line { border-bottom: 2px solid #C5A059; margin-bottom: 20px; }
+                    </style>
+                </head>
+                <body class="p-4" style="font-size: 0.9rem;">
+                    <div class="text-center mb-3">
+                        <img src="data:image/png;base64,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" alt="Grupo Empresarial Bienes Raíces White" style="max-width:320px; width:100%; height:auto; margin-bottom:6px;">
+                        <p class="text-muted small mb-0 fw-bold" style="letter-spacing: 0.5px;">COMPROBANTE DE PAGO Y LIQUIDACIÓN A PROPIETARIO</p>
+                    </div>
+                    <div class="header-line"></div>
+                    <div class="row g-2 mb-4 bg-light p-3 rounded-3" style="border: 1px solid #E2E8F0;">
+                        <div class="col-6"><strong>Propietario Inmueble:</strong> ${p.propietario || 'N/A'}</div>
+                        <div class="col-6"><strong>Cédula / NIT Prop.:</strong> ${p.cedulaProp || 'N/A'}</div>
+                        <div class="col-6"><strong>Consignar a (Beneficiario):</strong> ${p.titularConsignar || p.propietario || 'N/A'}</div>
+                        <div class="col-6"><strong>Cédula / NIT Titular:</strong> ${p.cedulaTitular || p.cedulaProp || 'N/A'}</div>
+                        <div class="col-6"><strong>Banco Destino:</strong> ${p.bancoProp || 'No especificado'}</div>
+                        <div class="col-6"><strong>Número de Cuenta:</strong> ${p.cuentaProp || 'No especificada'}</div>
+                        <div class="col-6"><strong>Contrato:</strong> #${p.contrato}</div>
+                        <div class="col-6"><strong>Arrendatario:</strong> ${p.arrendatario}</div>
+                        <div class="col-6"><strong>Período:</strong> ${p.ano} / ${p.mes} (${(p.tipoLiquidacion || 'mensual').replace('_', ' ').toUpperCase()})</div>
+                        <div class="col-6"><strong>Inmueble:</strong> ${p.direccion || 'N/A'}</div>
+                        <div class="col-6"><strong>Número de Factura:</strong> ${p.numeroFactura || 'N/A'}</div>
+                        <div class="col-6"><strong>Fecha de Factura:</strong> ${p.fechaFactura || 'N/A'}</div>
+                    </div>
+                    <table class="table table-bordered table-sm mb-4">
+                        <thead class="table-light">
+                            <tr><th>Concepto</th><th class="text-end">Monto</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Canon Base Arriendo Recaudado</td><td class="text-end fw-bold">$ ${(Number(p.canon)||0).toLocaleString()}</td></tr>
+                            ${descArrHtml}
+                            <tr><td>Comisión Administración (10%)</td><td class="text-end text-danger">- $ ${(Number(p.comision)||0).toLocaleString()}</td></tr>
+                            <tr><td>Deducción GMF (4x1000)</td><td class="text-end text-danger">- $ ${(Number(p.valor4x1000)||0).toLocaleString()}</td></tr>
+                            ${descPropHtml}
+                            <tr class="table-primary fw-bold" style="background-color: #0B132B !important; color: #FFFFFF !important;">
+                                <td>NETO PAGADO / CONSIGNADO AL PROPIETARIO</td>
+                                <td class="text-end text-warning" style="color: #E6C687 !important;">$ ${(Number(p.netoPropietario)||0).toLocaleString()}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="small mb-4">
+                        <p class="mb-1"><strong>Medio / Estado Recibo Arr.:</strong> ${p.formaPago || 'AV VILLAS'} (${p.estadoArr || 'CONFIRMADO'})</p>
+                        <p class="mb-1"><strong>Fecha Pago Propietario:</strong> ${p.fechaProp || 'Pendiente'}</p>
+                        <p class="mb-1"><strong>Medio / Estado Pago Prop.:</strong> ${p.formaProp || 'AV VILLAS'} (${p.estadoProp || 'CONFIRMADO'})</p>
+                        <p class="mb-1"><strong>Observaciones:</strong> ${p.observaciones || 'Ninguna'}</p>
+                    </div>
+                    <div class="text-center mt-5 pt-4">
+                        <p class="mb-0 border-top d-inline-block px-5 pt-2 fw-bold">Firma Autorizada / Sello Grupo Empresarial BRW</p>
+                    </div>
+                    <script>window.onload = function() { window.print(); window.close(); }<\/script>
+                </body>
+                </html>
+            `);
+            w.document.close();
+        }
+
+        function prepararNuevoPago() {
+            modoNuevoRecibo = true;
+            $('#editIndexPago').val('-1');
+            $('#formPago')[0].reset();
+            $('#inputBusquedaCedula').val('');
+            $('#pagoCedulaArr').val('');
+            $('#pagoContratoAsociado').val('');
+            $('#pagoContratoDisplay').val('');
+            $('#pagoPropietario').val('');
+            $('#pagoCedulaProp').val('');
+            $('#pagoTitularConsignar').val('');
+            $('#pagoCedulaTitular').val('');
+            $('#pagoBancoProp').val('');
+            $('#pagoCuentaProp').val('');
+            $('#pagoDireccionInmueble').val('');
+            $('#pagoCanon').val('');
+            $('#pagoConceptoDescArr').val('');
+            $('#pagoDescuento').val('0');
+            $('#pagoTotalConsignado').val('');
+            $('#pagoComision').val('');
+            $('#pagoValor4x1000').val('$ 0');
+            $('#pagoConceptoDescProp').val('');
+            $('#pagoValorDescProp').val('0');
+            $('#pagoNetoPropietario').val('');
+            $('#pagoFormaPago').val('AV VILLAS');
+            $('#pagoEstadoArr').val('CONFIRMADO');
+            $('#pagoFormaProp').val('AV VILLAS');
+            $('#pagoEstadoProp').val('CONFIRMADO');
+            $('#aplicar4x1000').prop('checked', false);
+            $('#modalPagoTitulo').html('<i class="fas fa-receipt me-2" style="color: var(--brand-gold);"></i>Registrar Recibo de Caja y Liquidación Propietario');
+        }
+
+        function prepararNuevoContrato() {
+            $('#editIndex').val('-1');
+            $('#formContrato')[0].reset();
+            // Con la lista vacía (primera vez) Math.max(...[]) da -Infinity; se protege con 0
+            let numerosContrato = datosBase.map(c => parseInt(c.contrato) || 0);
+            let maxContrato = numerosContrato.length ? Math.max(...numerosContrato) : 0;
+            $('#valContrato').val(maxContrato + 1);
+            $('#valFechaAviso').val('');
+            $('#valFrecuenciaPago').val('Mensual');
+            $('#valFechaRenovacion').val('');
+            $('#valValorRenovacion').val('');
+            $('#modalAdicionarLabel').html('<i class="fas fa-file-signature me-2" style="color: var(--brand-gold);"></i>Adicionar Contrato');
+        }
+
+        function exportarExcelContratosCompleto() {
+            if (!datosBase || datosBase.length === 0) {
+                alert("No hay registros de contratos para exportar.");
+                return;
+            }
+
+            let csv = "\uFEFFItem;No. Contrato;No. Estudio;Estado;Arrendatario;Cédula/NIT Arrendatario;Celular Arrendatario;Correo Arrendatario;Codeudor;Cédula/NIT Codeudor;Celular Codeudor;Correo Codeudor;Propietario;Cédula Propietario;Celular Propietario;Correo Propietario;Titular a Consignar;Cédula Titular;Banco Propietario;Cuenta Propietario;Dirección Inmueble;Valor Canon;Día Límite;Fecha Inicial;Fecha Vencimiento;Fecha Aviso Vencimiento;Frecuencia de Pago;Fecha Próxima Renovación;Valor Renovación\n";
+            
+            datosBase.forEach(item => {
+                let fila = [
+                    item.item || '',
+                    item.contrato || '',
+                    item.estudio || '',
+                    item.estado || '',
+                    item.arrendatario || '',
+                    item.cedulaArr || '',
+                    item.celArr || '',
+                    item.correoArr || '',
+                    item.codeudor || '',
+                    item.cedulaCodeudor || '',
+                    item.celCodeudor || '',
+                    item.correoCodeudor || '',
+                    item.propietario || '',
+                    item.cedulaProp || '',
+                    item.celProp || '',
+                    item.correoProp || '',
+                    item.titularConsignar || '',
+                    item.cedulaTitular || '',
+                    item.bancoProp || '',
+                    item.cuentaProp || '',
+                    item.direccion || '',
+                    item.canon || '',
+                    item.diaLimite || '',
+                    item.fechaIni || '',
+                    item.fechaVto || '',
+                    item.fechaAviso || '',
+                    item.frecuenciaPago || 'Mensual',
+                    item.fechaRenovacion || '',
+                    item.valorRenovacion || ''
+                ].map(campo => `"${String(campo).replace(/"/g, '""')}"`).join(";");
+
+                csv += fila + "\n";
+            });
+
+            let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Reporte_Completo_Contratos_BRW_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportarExcelPagos() {
+            if (!datosPagos || datosPagos.length === 0) {
+                alert("No hay registros de pagos para exportar.");
+                return;
+            }
+
+            let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Número de Factura;Fecha de Factura;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
+
+            datosPagos.forEach(p => {
+                let matchContrato = datosBase.find(c => c.contrato === p.contrato);
+                let diaLimiteVal = matchContrato ? matchContrato.diaLimite : '5';
+
+                let fila = [
+                    p.arrendatario || '',
+                    p.cedulaArr || '',
+                    p.contrato || '',
+                    diaLimiteVal,
+                    p.formaPago || 'AV VILLAS',
+                    p.estadoArr || 'CONFIRMADO',
+                    p.propietario || '',
+                    p.cedulaProp || '',
+                    p.titularConsignar || '',
+                    p.cedulaTitular || '',
+                    p.bancoProp || '',
+                    p.cuentaProp || '',
+                    p.direccion || '',
+                    p.numeroFactura || '',
+                    p.fechaFactura || '',
+                    p.fechaPago || '',
+                    p.ano || '',
+                    p.mes || '',
+                    p.canon || 0,
+                    p.conceptoDescArr || '',
+                    p.descuento || 0,
+                    p.totalConsignado || 0,
+                    p.tipoLiquidacion || 'mensual',
+                    p.comision || 0,
+                    p.valor4x1000 || 0,
+                    p.conceptoDescProp || '',
+                    p.valorDescProp || 0,
+                    p.netoPropietario || 0,
+                    p.fechaProp || '',
+                    p.formaProp || '',
+                    p.estadoProp || 'CONFIRMADO',
+                    p.observaciones || ''
+                ].map(campo => `"${String(campo).replace(/"/g, '""')}"`).join(";");
+
+                csv += fila + "\n";
+            });
+
+            let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Reporte_Completo_Pagos_y_Descuentos_BRW_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }

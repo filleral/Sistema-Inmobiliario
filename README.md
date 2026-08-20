@@ -1,10 +1,10 @@
 # Sistema Inmobiliario - Grupo Empresarial Bienes Raíces White
 
 Sistema de gestión de arriendos (contratos, recibos de caja y liquidaciones
-a propietarios) para una sola inmobiliaria. Es una página web autocontenida
-(`index.html`, con HTML + CSS + JavaScript en un solo archivo) que guarda
-toda la información en el **localStorage del navegador** — no usa servidor
-ni base de datos externa.
+a propietarios) para una sola inmobiliaria. Es una página web sin servidor:
+`index.html` (estructura) junto con `estilos.css` (diseño) y `app.js` (toda
+la lógica), que guarda toda la información en el **localStorage del
+navegador** — no usa servidor ni base de datos externa.
 
 ## Cómo usarlo
 
@@ -32,7 +32,7 @@ En la barra superior:
   confirmación antes de reemplazar los datos actuales.
 - **Importar CSV**: permite cargar datos iniciales de contratos (y
   opcionalmente sus primeros recibos) desde un archivo `.csv`. El mapeo de
-  columnas esperado se puede ajustar al inicio del código, en la constante
+  columnas esperado se puede ajustar al inicio de `app.js`, en la constante
   `MAPEO_CSV_IMPORTACION`.
 - **Restaurar Datos**: borra todos los contratos y recibos registrados en
   este navegador (usar con precaución; pide confirmación).
@@ -40,7 +40,8 @@ En la barra superior:
 ## Publicación en GitHub Pages
 
 El repositorio incluye `.github/workflows/deploy.yml`, que publica
-automáticamente `index.html` en GitHub Pages con cada push a `main`.
+automáticamente el sitio (`index.html`, `estilos.css` y `app.js`) en
+GitHub Pages con cada push a `main`.
 
 Pasos para publicarlo desde cero:
 
