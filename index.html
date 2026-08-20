@@ -1468,7 +1468,10 @@
                 return datosBase.filter(item => {
                     let matchGlobal = true;
                     if(textoGlobal) {
-                        let cadena = `${item.contrato} ${item.estudio} ${item.arrendatario} ${item.cedulaArr} ${item.propietario} ${item.cedulaProp} ${item.titularConsignar} ${item.direccion}`.toLowerCase();
+                        // Incluye TODOS los datos de identidad (arrendatario, codeudor, propietario y
+                        // titular) para que buscar una cédula, celular o correo la encuentre sin
+                        // importar en cuál de los tres roles esté registrada.
+                        let cadena = `${item.contrato} ${item.estudio} ${item.arrendatario} ${item.cedulaArr} ${item.celArr} ${item.correoArr} ${item.codeudor} ${item.cedulaCodeudor} ${item.celCodeudor} ${item.correoCodeudor} ${item.propietario} ${item.cedulaProp} ${item.celProp} ${item.correoProp} ${item.titularConsignar} ${item.cedulaTitular} ${item.direccion}`.toLowerCase();
                         matchGlobal = cadena.includes(textoGlobal);
                     }
                     let matchEstado = estadoSel ? (item.estado.toLowerCase() === estadoSel.toLowerCase()) : true;
