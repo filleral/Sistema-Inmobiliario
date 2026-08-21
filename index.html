@@ -51,11 +51,15 @@
                 <!-- Entradas de archivo ocultas usadas por los botones de Respaldo/CSV -->
                 <input type="file" id="inputArchivoRespaldo" accept=".json,application/json" style="display:none;" onchange="manejarArchivoRespaldo(event)">
                 <input type="file" id="inputArchivoCSV" accept=".csv,text/csv" style="display:none;" onchange="manejarArchivoCSV(event)">
+                <input type="file" id="inputArchivoCompletar" accept=".json,application/json" style="display:none;" onchange="manejarArchivoCompletarDatos(event)">
                 <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="respaldarTodoJSON()" title="Descarga toda la información del sistema en un archivo .json">
                     <i class="fas fa-download me-1"></i> Respaldar Todo
                 </button>
                 <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="document.getElementById('inputArchivoRespaldo').click()" title="Carga un archivo .json de respaldo previamente descargado">
                     <i class="fas fa-upload me-1"></i> Restaurar Respaldo
+                </button>
+                <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="document.getElementById('inputArchivoCompletar').click()" title="Carga un .json y SOLO completa los campos de contratos que estén vacíos (no edita ni duplica los que ya existen)">
+                    <i class="fas fa-list-check me-1"></i> Completar Datos Faltantes
                 </button>
                 <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="document.getElementById('inputArchivoCSV').click()" title="Importa contratos y recibos iniciales desde un archivo .csv">
                     <i class="fas fa-file-csv me-1"></i> Importar CSV

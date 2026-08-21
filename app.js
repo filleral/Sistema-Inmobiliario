@@ -217,6 +217,89 @@
             lector.readAsText(archivo, 'UTF-8');
         }
 
+        function esVacio(valor) {
+            return valor === undefined || valor === null || (typeof valor === 'string' && valor.trim() === '');
+        }
+
+        // Carga un .json de respaldo y, a diferencia de "Restaurar Respaldo" (que
+        // reemplaza TODO), aquí solo se completan los CAMPOS VACÍOS de los
+        // contratos que ya existen (sin editar los que ya tienen un valor) y se
+        // agregan los contratos que aún no existan. Nunca duplica ni sobrescribe.
+        // Pensado para importar datos completados por fuera (ej. la columna
+        // "Sucursal" llenada a mano) sin arriesgar lo que ya está en la app.
+        function manejarArchivoCompletarDatos(event) {
+            let archivo = event.target.files[0];
+            if (!archivo) return;
+
+            let lector = new FileReader();
+            lector.onload = function(e) {
+                let respaldo;
+                try {
+                    respaldo = JSON.parse(e.target.result);
+                } catch (err) {
+                    alert('El archivo seleccionado no es un JSON válido.');
+                    event.target.value = '';
+                    return;
+                }
+
+                if (!respaldo || typeof respaldo !== 'object' || !respaldo.datos || !Array.isArray(respaldo.datos.brw_datosBase)) {
+                    alert('El archivo no tiene contratos (brw_datosBase) para completar.');
+                    event.target.value = '';
+                    return;
+                }
+
+                let contratosImportados = respaldo.datos.brw_datosBase;
+                let mensajeConfirmacion = `Se revisarán ${contratosImportados.length} contratos del archivo.\n\n`
+                    + `Solo se van a completar los campos que estén VACÍOS en tus contratos actuales `
+                    + `(no se edita nada que ya tenga un valor) y se agregarán los contratos que aún no existan. `
+                    + `¿Continuar?`;
+                if (!confirm(mensajeConfirmacion)) {
+                    event.target.value = '';
+                    return;
+                }
+
+                let camposCompletados = 0;
+                let contratosActualizados = 0;
+                let contratosAgregados = 0;
+
+                contratosImportados.forEach(imp => {
+                    if (!imp || !imp.contrato) return;
+                    let existente = datosBase.find(c => c.contrato === imp.contrato);
+
+                    if (existente) {
+                        let seCompletoAlgo = false;
+                        Object.keys(imp).forEach(campo => {
+                            if (campo === 'item') return; // el índice interno no se toca
+                            if (esVacio(existente[campo]) && !esVacio(imp[campo])) {
+                                existente[campo] = imp[campo];
+                                camposCompletados++;
+                                seCompletoAlgo = true;
+                            }
+                        });
+                        if (seCompletoAlgo) contratosActualizados++;
+                    } else {
+                        datosBase.push({ ...imp, item: (datosBase.length + 1).toString() });
+                        contratosAgregados++;
+                    }
+                });
+
+                guardarEnLocalStorage();
+                if (typeof window.aplicarFiltros === 'function') window.aplicarFiltros();
+
+                alert(
+                    `Listo.\n\n` +
+                    `Campos completados: ${camposCompletados} (en ${contratosActualizados} contratos existentes)\n` +
+                    `Contratos nuevos agregados (no existían): ${contratosAgregados}\n\n` +
+                    `No se sobrescribió ningún dato que ya estuviera diligenciado.`
+                );
+                event.target.value = '';
+            };
+            lector.onerror = function() {
+                alert('No se pudo leer el archivo seleccionado.');
+            };
+            lector.readAsText(archivo, 'UTF-8');
+        }
+
         // ==========================================================================
         // IMPORTACIÓN DE DATOS INICIALES DESDE CSV
         // ==========================================================================
