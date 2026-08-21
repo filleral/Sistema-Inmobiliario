@@ -283,6 +283,7 @@
                                     <tr>
                                         <th>Arrendatario</th>
                                         <th>Contrato</th>
+                                        <th>Sucursal</th>
                                         <th>No. Factura</th>
                                         <th>Día Lím.</th>
                                         <th>Medio Pago Arr.</th>
@@ -335,7 +336,7 @@
                         
                         <div class="section-header-modal"><i class="fas fa-user-check me-1"></i> 1. Datos del Inquilino y Recibo de Caja</div>
                         <div class="row g-3 position-relative mb-4">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">Buscar por Cédula o Nombre Arrendatario *</label>
                                 <input type="text" class="form-control" id="inputBusquedaCedula" placeholder="Escriba número de cédula o nombre..." autocomplete="off">
                                 <div id="sugerenciasCedula" class="autocomplete-suggestions"></div>
@@ -343,6 +344,10 @@
                             <div class="col-md-2">
                                 <label class="form-label">Contrato Asociado</label>
                                 <input type="text" class="form-control bg-light fw-bold" id="pagoContratoDisplay" readonly>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Sucursal</label>
+                                <input type="text" class="form-control bg-light" id="pagoSucursal" readonly title="Se toma del contrato: distingue cuando el mismo propietario o arrendatario tiene varios inmuebles">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Inmueble / Dirección</label>

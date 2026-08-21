@@ -604,8 +604,9 @@
                             data-cedulatitular="${c.cedulaTitular || c.cedulaProp || ''}"
                             data-banco="${c.bancoProp || ''}" 
                             data-cuenta="${c.cuentaProp || ''}" 
-                            data-contrato="${c.contrato}" 
-                            data-direccion="${c.direccion}" 
+                            data-contrato="${c.contrato}"
+                            data-sucursal="${c.sucursal || ''}"
+                            data-direccion="${c.direccion}"
                             data-canon="${c.rawCanon || 0}">
                             <strong>Cédula: ${c.cedulaArr || 'N/A'}</strong> - ${c.arrendatario} <span class="text-muted">(Contrato #${c.contrato})</span>
                         </div>`);
@@ -625,6 +626,7 @@
                 $('#pagoCuentaProp').val($(this).data('cuenta'));
                 $('#pagoContratoDisplay').val("#" + $(this).data('contrato'));
                 $('#pagoContratoAsociado').val($(this).data('contrato'));
+                $('#pagoSucursal').val($(this).data('sucursal') || '');
                 $('#pagoDireccionInmueble').val($(this).data('direccion'));
                 $('#pagoCanon').val(formatearMonedaInput($(this).data('canon')));
                 $('#sugerenciasCedula').hide();
@@ -859,7 +861,7 @@
 
             let tbody = "";
             if (totalRegistros === 0) {
-                tbody = `<tr><td colspan="14" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
+                tbody = `<tr><td colspan="15" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
             } else {
                 paginados.forEach((p) => {
                     let originalIndex = datosPagos.indexOf(p);
@@ -874,10 +876,13 @@
                     let matchContrato = datosBase.find(c => c.contrato === p.contrato);
                     let diaLimiteVal = matchContrato ? matchContrato.diaLimite : '5';
 
+                    let sucursalVal = matchContrato && matchContrato.sucursal ? matchContrato.sucursal : '';
+
                     tbody += `
                         <tr>
                             <td><strong>${p.arrendatario}</strong></td>
                             <td><strong>#${p.contrato}</strong></td>
+                            <td>${sucursalVal ? `<span class="badge bg-light text-dark border">Suc. ${sucursalVal}</span>` : '<span class="text-muted">-</span>'}</td>
                             <td>${p.numeroFactura || '<span class="text-muted">-</span>'}</td>
                             <td><span class="badge bg-light text-dark border">Día ${diaLimiteVal}</span></td>
                             <td><span class="badge bg-light text-dark border">${p.formaPago || 'AV VILLAS'}</span></td>
@@ -938,14 +943,14 @@
             let estadoProp = $('#filtroEstadoProp').val();
 
             return datosPagos.filter(p => {
-                let textoMatch = `${p.arrendatario} ${p.cedulaArr} ${p.propietario} ${p.cedulaProp} ${p.titularConsignar} ${p.cedulaTitular} ${p.contrato} ${p.formaPago} ${p.formaProp} ${p.numeroFactura || ''}`.toLowerCase().includes(val);
+                let matchContrato = datosBase.find(c => c.contrato === p.contrato);
+                let textoMatch = `${p.arrendatario} ${p.cedulaArr} ${p.propietario} ${p.cedulaProp} ${p.titularConsignar} ${p.cedulaTitular} ${p.contrato} ${p.formaPago} ${p.formaProp} ${p.numeroFactura || ''} ${matchContrato ? matchContrato.sucursal || '' : ''}`.toLowerCase().includes(val);
                 let mMatch = mes ? p.mes === mes : true;
                 let eMatch = estado ? (p.estadoArr === estado) : true;
                 let ePropMatch = estadoProp ? ((p.estadoProp || 'CONFIRMADO') === estadoProp) : true;
 
                 // Validación del Rango del Día Límite
                 let dMatch = true;
-                let matchContrato = datosBase.find(c => c.contrato === p.contrato);
                 let diaLimiteVal = matchContrato ? parseInt(matchContrato.diaLimite) : 5;
 
                 if (!isNaN(diaDesde)) {
@@ -1109,6 +1114,7 @@
             $('#pagoCuentaProp').val(p.cuentaProp || (contratoRelacionado ? contratoRelacionado.cuentaProp : '') || '');
             $('#pagoContratoAsociado').val(p.contrato);
             $('#pagoContratoDisplay').val("#" + p.contrato);
+            $('#pagoSucursal').val(contratoRelacionado ? (contratoRelacionado.sucursal || '') : '');
             $('#pagoDireccionInmueble').val(p.direccion || '');
             $('#pagoNumeroFactura').val(p.numeroFactura || '');
             $('#pagoFechaFactura').val(p.fechaFactura || '');
@@ -1198,7 +1204,9 @@
 
         function imprimirComprobante(index) {
             let p = datosPagos[index];
-            let descPropHtml = p.valorDescProp > 0 
+            let contratoDelPago = datosBase.find(c => c.contrato === p.contrato);
+            let sucursalPago = contratoDelPago ? (contratoDelPago.sucursal || '') : '';
+            let descPropHtml = p.valorDescProp > 0
                 ? `<tr><td>Descuento Propietario (${p.conceptoDescProp || 'Concepto Varios'})</td><td class="text-end text-danger">- $ ${(Number(p.valorDescProp)||0).toLocaleString()}</td></tr>`
                 : '';
 
@@ -1236,6 +1244,7 @@
                         <div class="col-6"><strong>Arrendatario:</strong> ${p.arrendatario}</div>
                         <div class="col-6"><strong>Período:</strong> ${p.ano} / ${p.mes} (${(p.tipoLiquidacion || 'mensual').replace('_', ' ').toUpperCase()})</div>
                         <div class="col-6"><strong>Inmueble:</strong> ${p.direccion || 'N/A'}</div>
+                        ${sucursalPago ? `<div class="col-6"><strong>Sucursal:</strong> ${sucursalPago}</div>` : ''}
                         <div class="col-6"><strong>Número de Factura:</strong> ${p.numeroFactura || 'N/A'}</div>
                         <div class="col-6"><strong>Fecha de Factura:</strong> ${p.fechaFactura || 'N/A'}</div>
                     </div>
@@ -1279,6 +1288,7 @@
             $('#pagoCedulaArr').val('');
             $('#pagoContratoAsociado').val('');
             $('#pagoContratoDisplay').val('');
+            $('#pagoSucursal').val('');
             $('#pagoPropietario').val('');
             $('#pagoCedulaProp').val('');
             $('#pagoTitularConsignar').val('');
@@ -1387,16 +1397,18 @@
                 return;
             }
 
-            let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Número de Factura;Fecha de Factura;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
+            let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Sucursal;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Número de Factura;Fecha de Factura;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
 
             datosAExportar.forEach(p => {
                 let matchContrato = datosBase.find(c => c.contrato === p.contrato);
                 let diaLimiteVal = matchContrato ? matchContrato.diaLimite : '5';
+                let sucursalVal = matchContrato ? (matchContrato.sucursal || '') : '';
 
                 let fila = [
                     p.arrendatario || '',
                     p.cedulaArr || '',
                     p.contrato || '',
+                    sucursalVal,
                     diaLimiteVal,
                     p.formaPago || 'AV VILLAS',
                     p.estadoArr || 'CONFIRMADO',
