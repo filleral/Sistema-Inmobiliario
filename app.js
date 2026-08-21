@@ -504,7 +504,7 @@
                         // Incluye TODOS los datos de identidad (arrendatario, codeudor, propietario y
                         // titular) para que buscar una cédula, celular o correo la encuentre sin
                         // importar en cuál de los tres roles esté registrada.
-                        let cadena = `${item.contrato} ${item.estudio} ${item.arrendatario} ${item.cedulaArr} ${item.celArr} ${item.correoArr} ${item.codeudor} ${item.cedulaCodeudor} ${item.celCodeudor} ${item.correoCodeudor} ${item.propietario} ${item.cedulaProp} ${item.celProp} ${item.correoProp} ${item.titularConsignar} ${item.cedulaTitular} ${item.direccion}`.toLowerCase();
+                        let cadena = `${item.contrato} ${item.estudio} ${item.sucursal || ''} ${item.arrendatario} ${item.cedulaArr} ${item.celArr} ${item.correoArr} ${item.codeudor} ${item.cedulaCodeudor} ${item.celCodeudor} ${item.correoCodeudor} ${item.propietario} ${item.cedulaProp} ${item.celProp} ${item.correoProp} ${item.titularConsignar} ${item.cedulaTitular} ${item.direccion}`.toLowerCase();
                         matchGlobal = cadena.includes(textoGlobal);
                     }
                     let matchEstado = estadoSel ? (item.estado.toLowerCase() === estadoSel.toLowerCase()) : true;
@@ -743,6 +743,9 @@
                     item: index == -1 ? datosBase.length + 1 : datosBase[index].item,
                     contrato: $('#valContrato').val(),
                     estudio: $('#valEstudio').val() || 'N/A',
+                    // Distingue los distintos inmuebles cuando el mismo propietario o
+                    // arrendatario tiene varios (Sucursal 1, Sucursal 2...)
+                    sucursal: $('#valSucursal').val() || '',
                     estado: $('#valEstado').val(),
                     arrendatario: $('#valArrendatario').val(),
                     cedulaArr: $('#valCedulaArr').val(),
@@ -799,13 +802,16 @@
                 lista.forEach((item) => {
                     let originalIndex = datosBase.indexOf(item);
                     let badgeClass = item.estado === "Activo" ? "badge-status-active" : "badge-status-inactive";
+                    // Insignia "Suc. N": distingue cuando el mismo propietario/arrendatario
+                    // tiene varios inmuebles (ej. Miguel Venegas Suc. 1, Suc. 2, Suc. 3...)
+                    let badgeSucursal = item.sucursal ? ` <span class="badge bg-light text-dark border" style="font-size:0.65rem;">Suc. ${item.sucursal}</span>` : '';
                     tbody += `
                         <tr>
                             <td><strong style="color: var(--brand-navy);">#${item.contrato}</strong></td>
                             <td><span class="badge ${badgeClass}">${item.estado}</span></td>
-                            <td><strong class="text-dark">${item.arrendatario}</strong></td>
+                            <td><strong class="text-dark">${item.arrendatario}</strong>${badgeSucursal}</td>
                             <td>${item.direccion}</td>
-                            <td><span class="text-secondary">${item.propietario || 'N/A'}</span></td>
+                            <td><span class="text-secondary">${item.propietario || 'N/A'}</span>${badgeSucursal}</td>
                             <td class="fw-bold text-success">${item.canon}</td>
                             <td><span class="badge bg-light text-dark border">Día ${item.diaLimite}</span></td>
                             <td class="text-center">
@@ -980,6 +986,7 @@
             let item = datosBase[index];
             $('#detContrato').text(item.contrato || '-');
             $('#detEstudio').text(item.estudio || '-');
+            $('#detSucursal').text(item.sucursal || 'N/A');
             $('#detEstado').html(`<span class="badge ${item.estado === 'Activo' ? 'badge-status-active' : 'badge-status-inactive'}">${item.estado}</span>`);
             $('#detFechaIni').text(item.fechaIni || '-');
             $('#detFechaVto').text(item.fechaVto || '-');
@@ -1040,6 +1047,7 @@
             $('#editIndex').val(index);
             $('#valContrato').val(item.contrato);
             $('#valEstudio').val(item.estudio || '');
+            $('#valSucursal').val(item.sucursal || '');
             $('#valEstado').val(item.estado || 'Activo');
             $('#valArrendatario').val(item.arrendatario || '');
             $('#valCedulaArr').val(item.cedulaArr || '');
@@ -1321,13 +1329,14 @@
                 return;
             }
 
-            let csv = "\uFEFFItem;No. Contrato;No. Estudio;Estado;Arrendatario;Cédula/NIT Arrendatario;Celular Arrendatario;Correo Arrendatario;Codeudor;Cédula/NIT Codeudor;Celular Codeudor;Correo Codeudor;Propietario;Cédula Propietario;Celular Propietario;Correo Propietario;Titular a Consignar;Cédula Titular;Banco Propietario;Cuenta Propietario;Dirección Inmueble;Valor Canon;Día Límite;Fecha Inicial;Fecha Vencimiento;Fecha Aviso Vencimiento;Frecuencia de Pago;Fecha Próxima Renovación;Valor Renovación\n";
+            let csv = "\uFEFFItem;No. Contrato;No. Estudio;Sucursal;Estado;Arrendatario;Cédula/NIT Arrendatario;Celular Arrendatario;Correo Arrendatario;Codeudor;Cédula/NIT Codeudor;Celular Codeudor;Correo Codeudor;Propietario;Cédula Propietario;Celular Propietario;Correo Propietario;Titular a Consignar;Cédula Titular;Banco Propietario;Cuenta Propietario;Dirección Inmueble;Valor Canon;Día Límite;Fecha Inicial;Fecha Vencimiento;Fecha Aviso Vencimiento;Frecuencia de Pago;Fecha Próxima Renovación;Valor Renovación\n";
             
             datosAExportar.forEach(item => {
                 let fila = [
                     item.item || '',
                     item.contrato || '',
                     item.estudio || '',
+                    item.sucursal || '',
                     item.estado || '',
                     item.arrendatario || '',
                     item.cedulaArr || '',

@@ -524,6 +524,7 @@
                         <div class="row g-2 small">
                             <div class="col-md-4"><strong>Contrato:</strong> <span id="detContrato"></span></div>
                             <div class="col-md-4"><strong>No. Estudio:</strong> <span id="detEstudio"></span></div>
+                            <div class="col-md-4"><strong>Sucursal:</strong> <span id="detSucursal"></span></div>
                             <div class="col-md-4"><strong>Estado:</strong> <span id="detEstado"></span></div>
                             <div class="col-md-4"><strong>F. Inicial:</strong> <span id="detFechaIni"></span></div>
                             <div class="col-md-4"><strong>F. Vencimiento:</strong> <span id="detFechaVto"></span></div>
@@ -629,9 +630,13 @@
 
                         <div class="section-header-modal"><i class="fas fa-house me-1"></i> 4. Datos del Inmueble y del Contrato</div>
                         <div class="row g-3">
-                            <div class="col-md-4"><label class="form-label">No. Contrato</label><input type="text" class="form-control bg-light" id="valContrato" readonly></div>
-                            <div class="col-md-4"><label class="form-label">No. Estudio</label><input type="text" class="form-control" id="valEstudio"></div>
-                            <div class="col-md-4"><label class="form-label">Estado</label><select class="form-select" id="valEstado"><option value="Activo">Activo</option><option value="Retirado">Retirado</option></select></div>
+                            <div class="col-md-3"><label class="form-label">No. Contrato</label><input type="text" class="form-control bg-light" id="valContrato" readonly></div>
+                            <div class="col-md-3"><label class="form-label">No. Estudio</label><input type="text" class="form-control" id="valEstudio"></div>
+                            <div class="col-md-3">
+                                <label class="form-label">Sucursal</label>
+                                <input type="text" class="form-control" id="valSucursal" placeholder="Ej: 1, 2, 3..." title="Úsela cuando el mismo propietario o arrendatario tenga varios inmuebles, para diferenciarlos (Sucursal 1, Sucursal 2...)">
+                            </div>
+                            <div class="col-md-3"><label class="form-label">Estado</label><select class="form-select" id="valEstado"><option value="Activo">Activo</option><option value="Retirado">Retirado</option></select></div>
                             <div class="col-md-6"><label class="form-label">Dirección Inmueble</label><input type="text" class="form-control" id="valDireccion" required></div>
                             <div class="col-md-6"><label class="form-label">Canon ($)</label><input type="text" class="form-control" id="valCanonNumerico" required oninput="formatearEntradaMoneda(this)"></div>
                             <div class="col-md-4"><label class="form-label">Día Límite</label><input type="number" class="form-control" id="valDiaLimite" value="5" min="1" max="31"></div>
