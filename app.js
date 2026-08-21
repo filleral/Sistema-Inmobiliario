@@ -518,6 +518,9 @@
                     return matchGlobal && matchEstado && matchDia && matchFechas;
                 });
             }
+            // Se expone en window para que "Exportar CSV" (fuera de este closure)
+            // pueda exportar exactamente los contratos que están filtrados en pantalla.
+            window.obtenerContratosFiltrados = obtenerContratosFiltrados;
 
             function aplicarFiltros() {
                 paginaActual = 1;
@@ -564,7 +567,7 @@
                 filtrarYMostrarPagos();
             });
 
-            $('#filtroMes, #filtroEstadoPago').on('change', function() {
+            $('#filtroMes, #filtroEstadoPago, #filtroEstadoProp').on('change', function() {
                 paginaActualPagos = 1;
                 filtrarYMostrarPagos();
             });
@@ -578,9 +581,9 @@
 
             $('#btnLimpiarFiltrosPagos').on('click', function() {
                 $('#filtroPagosGlobal, #filtroDiaDesde, #filtroDiaHasta').val('');
-                $('#filtroMes, #filtroEstadoPago').val('');
+                $('#filtroMes, #filtroEstadoPago, #filtroEstadoProp').val('');
                 paginaActualPagos = 1;
-                cargarTablaPagos(datosPagos);
+                filtrarYMostrarPagos();
             });
 
             $('#inputBusquedaCedula').on('input', function() {
@@ -836,6 +839,7 @@
         }
 
         function cargarTablaPagos(lista = datosPagos) {
+            renderizarResumenEstadosPagos(lista);
             let tamanioVal = $('#tamanioPaginaPagos').val();
             let tamanio = tamanioVal === "1000" ? lista.length : (parseInt(tamanioVal) || 10);
             let totalRegistros = lista.length;
@@ -915,17 +919,23 @@
             filtrarYMostrarPagos();
         };
 
-        function filtrarYMostrarPagos() {
+        // Aplica todos los filtros de la pestaña de Recibos y devuelve la lista
+        // resultante. Se usa tanto para pintar la tabla como para exportar a CSV,
+        // de modo que el Excel exportado siempre coincida con lo que se ve filtrado
+        // en pantalla (y no con la totalidad de los recibos).
+        function obtenerPagosFiltrados() {
             let val = $('#filtroPagosGlobal').val().toLowerCase();
             let diaDesde = parseInt($('#filtroDiaDesde').val());
             let diaHasta = parseInt($('#filtroDiaHasta').val());
             let mes = $('#filtroMes').val();
             let estado = $('#filtroEstadoPago').val();
+            let estadoProp = $('#filtroEstadoProp').val();
 
-            let filtrados = datosPagos.filter(p => {
+            return datosPagos.filter(p => {
                 let textoMatch = `${p.arrendatario} ${p.cedulaArr} ${p.propietario} ${p.cedulaProp} ${p.titularConsignar} ${p.cedulaTitular} ${p.contrato} ${p.formaPago} ${p.formaProp} ${p.numeroFactura || ''}`.toLowerCase().includes(val);
                 let mMatch = mes ? p.mes === mes : true;
                 let eMatch = estado ? (p.estadoArr === estado) : true;
+                let ePropMatch = estadoProp ? ((p.estadoProp || 'CONFIRMADO') === estadoProp) : true;
 
                 // Validación del Rango del Día Límite
                 let dMatch = true;
@@ -939,9 +949,31 @@
                     dMatch = dMatch && (diaLimiteVal <= diaHasta);
                 }
 
-                return textoMatch && mMatch && eMatch && dMatch;
+                return textoMatch && mMatch && eMatch && ePropMatch && dMatch;
             });
-            cargarTablaPagos(filtrados);
+        }
+
+        // Cuenta, dentro de la lista ya filtrada, cuántos recibos están confirmados o
+        // pendientes tanto del lado del arrendatario como del propietario, y pinta ese
+        // resumen como insignias (para ver "quién ya pagó y a quién ya se le pagó" sin
+        // tener que revisar fila por fila ni exportar a Excel).
+        function renderizarResumenEstadosPagos(lista) {
+            let arrConfirmados = lista.filter(p => (p.estadoArr || 'CONFIRMADO') === 'CONFIRMADO').length;
+            let arrPendientes = lista.length - arrConfirmados;
+            let propConfirmados = lista.filter(p => (p.estadoProp || 'CONFIRMADO') === 'CONFIRMADO').length;
+            let propPendientes = lista.length - propConfirmados;
+
+            let html = `
+                <span class="badge badge-status-active me-1">Arrendatario pagó: ${arrConfirmados}</span>
+                <span class="badge badge-status-pending me-3">Arrendatario pendiente: ${arrPendientes}</span>
+                <span class="badge badge-status-active me-1">Propietario ya pagado: ${propConfirmados}</span>
+                <span class="badge badge-status-pending">Propietario pendiente: ${propPendientes}</span>
+            `;
+            $('#resumenEstadosPagos').html(html);
+        }
+
+        function filtrarYMostrarPagos() {
+            cargarTablaPagos(obtenerPagosFiltrados());
         }
 
         function abrirModalDetalle(index) {
@@ -1278,14 +1310,20 @@
         }
 
         function exportarExcelContratosCompleto() {
-            if (!datosBase || datosBase.length === 0) {
-                alert("No hay registros de contratos para exportar.");
+            // Exporta lo que esté FILTRADO en pantalla (búsqueda, estado, día límite,
+            // rango de fechas), no siempre la totalidad de los contratos.
+            let datosAExportar = (typeof window.obtenerContratosFiltrados === 'function')
+                ? window.obtenerContratosFiltrados()
+                : datosBase;
+
+            if (!datosAExportar || datosAExportar.length === 0) {
+                alert("No hay registros de contratos para exportar con los filtros actuales.");
                 return;
             }
 
             let csv = "\uFEFFItem;No. Contrato;No. Estudio;Estado;Arrendatario;Cédula/NIT Arrendatario;Celular Arrendatario;Correo Arrendatario;Codeudor;Cédula/NIT Codeudor;Celular Codeudor;Correo Codeudor;Propietario;Cédula Propietario;Celular Propietario;Correo Propietario;Titular a Consignar;Cédula Titular;Banco Propietario;Cuenta Propietario;Dirección Inmueble;Valor Canon;Día Límite;Fecha Inicial;Fecha Vencimiento;Fecha Aviso Vencimiento;Frecuencia de Pago;Fecha Próxima Renovación;Valor Renovación\n";
             
-            datosBase.forEach(item => {
+            datosAExportar.forEach(item => {
                 let fila = [
                     item.item || '',
                     item.contrato || '',
@@ -1331,14 +1369,18 @@
         }
 
         function exportarExcelPagos() {
-            if (!datosPagos || datosPagos.length === 0) {
-                alert("No hay registros de pagos para exportar.");
+            // Exporta lo que esté FILTRADO en pantalla (búsqueda, mes, día límite,
+            // estado arrendatario/propietario), no siempre la totalidad de los recibos.
+            let datosAExportar = obtenerPagosFiltrados();
+
+            if (!datosAExportar || datosAExportar.length === 0) {
+                alert("No hay registros de pagos para exportar con los filtros actuales.");
                 return;
             }
 
             let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Número de Factura;Fecha de Factura;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
 
-            datosPagos.forEach(p => {
+            datosAExportar.forEach(p => {
                 let matchContrato = datosBase.find(c => c.contrato === p.contrato);
                 let diaLimiteVal = matchContrato ? matchContrato.diaLimite : '5';
 

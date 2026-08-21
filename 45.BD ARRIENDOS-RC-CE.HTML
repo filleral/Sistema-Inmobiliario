@@ -248,6 +248,14 @@
                                 <option value="PENDIENTE">PENDIENTE</option>
                             </select>
                         </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Estado Pago Prop.:</label>
+                            <select id="filtroEstadoProp" class="form-select">
+                                <option value="">-- Todos --</option>
+                                <option value="CONFIRMADO">CONFIRMADO</option>
+                                <option value="PENDIENTE">PENDIENTE</option>
+                            </select>
+                        </div>
                         <div class="col-md-2 d-flex gap-2">
                             <button id="btnBuscarPagos" class="btn btn-luxury-primary w-100">
                                 <i class="fas fa-search me-1"></i> Buscar
@@ -255,6 +263,14 @@
                             <button id="btnLimpiarFiltrosPagos" class="btn btn-outline-secondary">
                                 <i class="fas fa-rotate-left"></i>
                             </button>
+                        </div>
+                    </div>
+                    <!-- Resumen rápido: cuántos de los recibos filtrados ya pagó el
+                         arrendatario y a cuántos propietarios ya se les consignó -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <span class="small fw-bold text-muted me-2">Resumen (según filtros aplicados):</span>
+                            <span id="resumenEstadosPagos"></span>
                         </div>
                     </div>
                 </div>
