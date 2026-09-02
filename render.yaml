@@ -1,0 +1,24 @@
+# Blueprint de Render: al conectar este repositorio con "New +ᐳ Blueprint"
+# en Render, este archivo configura el servicio automáticamente. Solo hace
+# falta pegar los 4 valores marcados "sync: false" (Render los pide en
+# pantalla durante la creación).
+services:
+  - type: web
+    name: brw-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: AUTH_USERNAME
+        sync: false
+      - key: AUTH_PASSWORD_HASH
+        sync: false
+      - key: ALLOWED_ORIGIN
+        value: https://filleral.github.io
