@@ -2,11 +2,15 @@
         // CONFIGURACIÓN DE LA APLICACIÓN — ajustar aquí si cambian las reglas
         // ==========================================================================
 
-        // Prefijo de TODAS las claves de localStorage propias de este sistema.
-        // Las funciones de Respaldo/Restaurar/"Restaurar Datos" solo leen o
-        // eliminan claves con este prefijo, para no afectar otras páginas que
-        // pudieran compartir el mismo dominio (por ejemplo, en GitHub Pages).
+        // Dirección del backend (API) donde vive la base de datos real. Si el
+        // backend se vuelve a desplegar con otra URL, solo hay que cambiarla acá.
+        const API_BASE_URL = 'https://brw-backend-4yr5.onrender.com/api';
+
+        // Prefijo de las claves de localStorage propias de este sistema. Hoy solo
+        // se usa para guardar la sesión (token) del navegador; los datos en sí ya
+        // NO viven en localStorage, sino en la base de datos del backend.
         const PREFIJO_CLAVES_APP = 'brw_';
+        const CLAVE_TOKEN = 'brw_authToken';
 
         // Mapeo de columnas del CSV a los campos internos del sistema para la
         // importación inicial de datos (botón "Importar CSV"). La clave (izquierda)
@@ -26,106 +30,227 @@
             periodo: 'Periodo'              // Período del pago, formato AAAA-MM (opcional)
         };
 
-        // Datos de ejemplo: se dejan vacíos a propósito antes de publicar el sistema,
-        // para no exponer información real de clientes en un repositorio público.
-        // El sistema arranca sin registros; use "Importar CSV" o "Restaurar Respaldo"
-        // para cargar información.
-        const datosBaseIniciales = [];
-        const datosPagosIniciales = [];
+        // Los datos ya NO se guardan en localStorage: viven en la base de datos del
+        // backend, compartida por todo el negocio. Estos arrays son solo la copia
+        // en memoria de lo que devolvió la API; se llenan en iniciarApp().
+        let datosBase = [];
+        let datosPagos = [];
 
-        let datosBase = JSON.parse(localStorage.getItem('brw_datosBase')) || datosBaseIniciales;
-        let datosPagosRaw = JSON.parse(localStorage.getItem('brw_datosPagos_v10')) || JSON.parse(localStorage.getItem('brw_datosPagos_v9')) || datosPagosIniciales;
+        // ==========================================================================
+        // SESIÓN / LOGIN — el backend exige una clave compartida para todo el
+        // negocio (no hay cuentas individuales). El token se guarda en localStorage
+        // del navegador para no pedir la clave en cada visita (dura 30 días).
+        // ==========================================================================
+
+        function obtenerToken() {
+            return localStorage.getItem(CLAVE_TOKEN) || '';
+        }
+
+        function guardarToken(token) {
+            localStorage.setItem(CLAVE_TOKEN, token);
+        }
+
+        function borrarToken() {
+            localStorage.removeItem(CLAVE_TOKEN);
+        }
+
+        // Wrapper de fetch() que agrega automáticamente la sesión (token) a cada
+        // llamada al backend, y maneja de forma centralizada los errores más
+        // comunes (sin conexión, sesión vencida, error del servidor) para no
+        // repetir ese manejo en cada función que llama a la API.
+        async function apiFetch(ruta, opciones) {
+            opciones = opciones || {};
+            let encabezados = Object.assign({ 'Content-Type': 'application/json' }, opciones.headers || {});
+            let token = obtenerToken();
+            if (token) encabezados['Authorization'] = 'Bearer ' + token;
+
+            let respuesta;
+            try {
+                respuesta = await fetch(API_BASE_URL + ruta, Object.assign({}, opciones, { headers: encabezados }));
+            } catch (err) {
+                throw new Error('No se pudo conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo. Si es la primera petición en un rato, el servidor puede tardar hasta un minuto en despertar.');
+            }
+
+            if (respuesta.status === 401) {
+                borrarToken();
+                mostrarLogin('Tu sesión terminó. Vuelve a iniciar sesión.');
+                throw new Error('Sesión expirada.');
+            }
+
+            let cuerpo = null;
+            try { cuerpo = await respuesta.json(); } catch (e) { /* respuestas sin cuerpo (ej. 204) */ }
+
+            if (!respuesta.ok) {
+                throw new Error((cuerpo && cuerpo.error) || 'Ocurrió un error inesperado en el servidor.');
+            }
+            return cuerpo;
+        }
+
+        function mostrarCargando(visible, mensaje) {
+            $('#pantallaCarga p').first().text(mensaje || 'Cargando información...');
+            $('#pantallaCarga').css('display', visible ? 'flex' : 'none');
+        }
+
+        function mostrarLogin(mensajeError) {
+            mostrarCargando(false);
+            $('#contenidoApp').hide();
+            $('#loginError').toggle(!!mensajeError).text(mensajeError || '');
+            let modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalLogin'), { backdrop: 'static', keyboard: false });
+            modal.show();
+        }
+
+        function ocultarLogin() {
+            let modalEl = document.getElementById('modalLogin');
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+            $('#contenidoApp').show();
+        }
+
+        // Al abrir la página: si hay una sesión guardada, la valida contra el
+        // servidor y arranca la app directo; si no, muestra el login primero.
+        async function inicializarAutenticacion() {
+            let token = obtenerToken();
+            if (!token) {
+                mostrarLogin();
+                return;
+            }
+            mostrarCargando(true, 'Verificando sesión...');
+            try {
+                await apiFetch('/auth/verificar');
+                await iniciarApp();
+            } catch (err) {
+                mostrarCargando(false);
+                // apiFetch ya mostró el login si la sesión venció; si fue un error
+                // de conexión, se avisa aparte para no dejar la pantalla en blanco.
+                if (!obtenerToken()) return;
+                mostrarLogin(err.message);
+            }
+        }
+
+        // Normaliza los pagos recién traídos de la API y recalcula sus valores
+        // derivados (por si el registro es antiguo o le faltan campos), usando las
+        // mismas fórmulas que calcularLiquidacionPropietario():
+        //   Total Recaudado   = Canon - Descuento al arrendatario
+        //   Comisión Adm.     = 10% del Canon, solo si la liquidación es "mensual"
+        //   GMF (4x1000)      = 0.4% del Canon, si el registro lo trae guardado
+        //   Neto Propietario  = Canon - Comisión - GMF - Descuento al propietario
+        function normalizarPagos(datosPagosRaw) {
+            return (datosPagosRaw || []).map(p => {
+                let canonVal = p.canon || p.totalConsignado || 0;
+                let descuentoVal = p.descuento || 0;
+                let totalRecaudadoVal = canonVal - descuentoVal;
+
+                let tipoLiq = p.tipoLiquidacion || 'mensual';
+                let comisionVal = tipoLiq === 'mensual' ? Math.round(canonVal * 0.1) : 0;
+                let descPropVal = p.valorDescProp || 0;
+                let gmfVal = p.valor4x1000 || 0;
+
+                let netoCalculado = canonVal - comisionVal - gmfVal - descPropVal;
+
+                let cedulaArrVal = p.cedulaArr || "";
+                let cedulaPropVal = p.cedulaProp || "";
+                if ((!cedulaArrVal || !cedulaPropVal) && p.contrato) {
+                    let matchContrato = datosBase.find(c => c.contrato === p.contrato);
+                    if (matchContrato) {
+                        if (!cedulaArrVal) cedulaArrVal = matchContrato.cedulaArr || "";
+                        if (!cedulaPropVal) cedulaPropVal = matchContrato.cedulaProp || "";
+                    }
+                }
+
+                return {
+                    id: p.id,
+                    arrendatario: p.arrendatario || 'Sin Arrendatario',
+                    cedulaArr: cedulaArrVal,
+                    propietario: p.propietario || 'Sin Especificar',
+                    cedulaProp: cedulaPropVal,
+                    titularConsignar: p.titularConsignar || "",
+                    cedulaTitular: p.cedulaTitular || "",
+                    bancoProp: p.bancoProp || "",
+                    cuentaProp: p.cuentaProp || "",
+                    numeroFactura: p.numeroFactura || "",
+                    fechaFactura: p.fechaFactura || "",
+                    fechaPago: p.fechaPago || '2026-01-01',
+                    ano: (p.ano || 2026).toString(),
+                    mes: p.mes || 'Enero',
+                    contrato: p.contrato || '0',
+                    direccion: p.direccion || 'Sin Dirección',
+                    formaPago: p.formaPago || 'AV VILLAS',
+                    estadoArr: p.estadoArr || 'CONFIRMADO',
+                    canon: canonVal,
+                    conceptoDescArr: p.conceptoDescArr || '',
+                    descuento: descuentoVal,
+                    totalConsignado: totalRecaudadoVal,
+                    tipoLiquidacion: tipoLiq,
+                    comision: comisionVal,
+                    valor4x1000: gmfVal,
+                    conceptoDescProp: p.conceptoDescProp || '',
+                    valorDescProp: descPropVal,
+                    netoPropietario: netoCalculado,
+                    fechaProp: p.fechaProp || '',
+                    formaProp: p.formaProp || 'AV VILLAS',
+                    estadoProp: p.estadoProp || 'CONFIRMADO',
+                    observaciones: p.observaciones || ''
+                };
+            });
+        }
 
         // Migración: contratos guardados antes de existir "Fecha Aviso Vencimiento"
         // no tienen ese campo. Se calcula aquí (90 días antes del vencimiento) para
         // que el filtro "Concepto Fecha: Fecha Aviso Vencimiento" funcione sin
         // necesidad de volver a editar cada contrato manualmente.
-        datosBase.forEach(item => {
-            if (!item.fechaAviso && item.fechaVto) {
-                item.fechaAviso = calcularFechaAviso(item.fechaVto);
-            }
-        });
-
-        // Normaliza los pagos leídos de localStorage y recalcula sus valores derivados
-        // (por si el registro es antiguo o le faltan campos), usando las mismas fórmulas
-        // que calcularLiquidacionPropietario():
-        //   Total Recaudado   = Canon - Descuento al arrendatario
-        //   Comisión Adm.     = 10% del Canon, solo si la liquidación es "mensual"
-        //   GMF (4x1000)      = 0.4% del Canon, si el registro lo trae guardado
-        //   Neto Propietario  = Canon - Comisión - GMF - Descuento al propietario
-        let datosPagos = datosPagosRaw.map(p => {
-            let canonVal = p.canon || p.totalConsignado || 0;
-            let descuentoVal = p.descuento || 0;
-            let totalRecaudadoVal = canonVal - descuentoVal;
-
-            let tipoLiq = p.tipoLiquidacion || 'mensual';
-            let comisionVal = tipoLiq === 'mensual' ? Math.round(canonVal * 0.1) : 0;
-            let descPropVal = p.valorDescProp || 0;
-            let gmfVal = p.valor4x1000 || 0;
-
-            let netoCalculado = canonVal - comisionVal - gmfVal - descPropVal;
-
-            let cedulaArrVal = p.cedulaArr || "";
-            let cedulaPropVal = p.cedulaProp || "";
-            if ((!cedulaArrVal || !cedulaPropVal) && p.contrato) {
-                let matchContrato = datosBase.find(c => c.contrato === p.contrato);
-                if (matchContrato) {
-                    if (!cedulaArrVal) cedulaArrVal = matchContrato.cedulaArr || "";
-                    if (!cedulaPropVal) cedulaPropVal = matchContrato.cedulaProp || "";
+        function normalizarContratos(datosBaseRaw) {
+            (datosBaseRaw || []).forEach(item => {
+                if (!item.fechaAviso && item.fechaVto) {
+                    item.fechaAviso = calcularFechaAviso(item.fechaVto);
                 }
-            }
-
-            return {
-                arrendatario: p.arrendatario || 'Sin Arrendatario',
-                cedulaArr: cedulaArrVal,
-                propietario: p.propietario || 'Sin Especificar',
-                cedulaProp: cedulaPropVal,
-                titularConsignar: p.titularConsignar || "",
-                cedulaTitular: p.cedulaTitular || "",
-                bancoProp: p.bancoProp || "",
-                cuentaProp: p.cuentaProp || "",
-                numeroFactura: p.numeroFactura || "",
-                fechaFactura: p.fechaFactura || "",
-                fechaPago: p.fechaPago || '2026-01-01',
-                ano: (p.ano || 2026).toString(),
-                mes: p.mes || 'Enero',
-                contrato: p.contrato || '0',
-                direccion: p.direccion || 'Sin Dirección',
-                formaPago: p.formaPago || 'AV VILLAS',
-                estadoArr: p.estadoArr || 'CONFIRMADO',
-                canon: canonVal,
-                conceptoDescArr: p.conceptoDescArr || '',
-                descuento: descuentoVal,
-                totalConsignado: totalRecaudadoVal,
-                tipoLiquidacion: tipoLiq,
-                comision: comisionVal,
-                valor4x1000: gmfVal,
-                conceptoDescProp: p.conceptoDescProp || '',
-                valorDescProp: descPropVal,
-                netoPropietario: netoCalculado,
-                fechaProp: p.fechaProp || '',
-                formaProp: p.formaProp || 'AV VILLAS',
-                estadoProp: p.estadoProp || 'CONFIRMADO',
-                observaciones: p.observaciones || ''
-            };
-        });
-
-        function guardarEnLocalStorage() {
-            localStorage.setItem('brw_datosBase', JSON.stringify(datosBase));
-            localStorage.setItem('brw_datosPagos_v10', JSON.stringify(datosPagos));
+            });
+            return datosBaseRaw || [];
         }
 
-        function restaurarDatosOriginales() {
-            if(confirm('¿Desea restablecer todos los datos a la versión inicial?')) {
-                // Solo se eliminan las claves propias de esta aplicación (prefijo brw_)
-                Object.keys(localStorage)
-                    .filter(clave => clave.startsWith(PREFIJO_CLAVES_APP))
-                    .forEach(clave => localStorage.removeItem(clave));
-                datosBase = [...datosBaseIniciales];
-                datosPagos = [...datosPagosIniciales];
-                aplicarFiltros();
+        // Trae los contratos y recibos reales desde el backend y arranca la app.
+        // Se llama justo después de iniciar sesión (o al abrir la página si ya
+        // había una sesión guardada).
+        async function iniciarApp() {
+            ocultarLogin();
+            mostrarCargando(true, 'Cargando contratos y recibos...');
+            try {
+                let [contratos, pagos] = await Promise.all([
+                    apiFetch('/contratos'),
+                    apiFetch('/pagos'),
+                ]);
+                datosBase = normalizarContratos(contratos);
+                datosPagos = normalizarPagos(pagos);
+                window.aplicarFiltros();
+                cargarTablaPagos();
+            } catch (err) {
+                alert('No se pudieron cargar los datos: ' + err.message);
+            } finally {
+                mostrarCargando(false);
+            }
+        }
+
+        // "Restaurar Datos": con la base de datos compartida, esto borra la
+        // información de TODO el negocio (no solo de este navegador como antes),
+        // por eso pide una confirmación reforzada de dos pasos.
+        async function restaurarDatosOriginales() {
+            if (!confirm('¿Desea restablecer todos los datos a la versión inicial?')) return;
+            if (!confirm('Esto borrará TODOS los contratos y recibos de TODO el negocio (no solo de este computador). Esta acción no se puede deshacer. ¿Confirma que desea continuar?')) return;
+
+            mostrarCargando(true, 'Borrando datos...');
+            try {
+                await apiFetch('/respaldo/restaurar', {
+                    method: 'POST',
+                    body: JSON.stringify({ datos: { brw_datosBase: [], brw_datosPagos_v10: [] } }),
+                });
+                datosBase = [];
+                datosPagos = [];
+                window.aplicarFiltros();
                 cargarTablaPagos();
                 alert('¡Datos restaurados con éxito!');
+            } catch (err) {
+                alert('No se pudo restaurar: ' + err.message);
+            } finally {
+                mostrarCargando(false);
             }
         }
 
@@ -133,42 +258,34 @@
         // RESPALDO Y RESTAURACIÓN COMPLETA (archivo .json)
         // ==========================================================================
 
-        // Descarga TODAS las claves de localStorage propias de la app en un único
-        // archivo .json (contratos, pagos y cualquier otra clave con prefijo brw_).
-        function respaldarTodoJSON() {
-            let clavesApp = Object.keys(localStorage).filter(clave => clave.startsWith(PREFIJO_CLAVES_APP));
-            let datosRespaldo = {};
-            clavesApp.forEach(clave => {
-                try {
-                    datosRespaldo[clave] = JSON.parse(localStorage.getItem(clave));
-                } catch (e) {
-                    datosRespaldo[clave] = localStorage.getItem(clave);
-                }
-            });
-
-            let respaldo = {
-                app: 'Bienes Raíces White - Sistema de Arriendos',
-                version: 1,
-                fecha: new Date().toISOString(),
-                datos: datosRespaldo
-            };
-
-            let blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: 'application/json;charset=utf-8;' });
-            let link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `Respaldo_BRW_${new Date().toISOString().slice(0, 10)}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        // Descarga toda la información real (contratos y recibos), tal como está
+        // en la base de datos del backend en este momento, en un único .json.
+        async function respaldarTodoJSON() {
+            mostrarCargando(true, 'Preparando el respaldo...');
+            try {
+                let respaldo = await apiFetch('/respaldo');
+                let blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: 'application/json;charset=utf-8;' });
+                let link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `Respaldo_BRW_${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (err) {
+                alert('No se pudo generar el respaldo: ' + err.message);
+            } finally {
+                mostrarCargando(false);
+            }
         }
 
-        // Lee el archivo .json seleccionado por el usuario y dispara la restauración
+        // Lee el archivo .json seleccionado por el usuario y reemplaza TODOS los
+        // datos de la base de datos compartida por lo que traiga ese archivo.
         function manejarArchivoRespaldo(event) {
             let archivo = event.target.files[0];
             if (!archivo) return;
 
             let lector = new FileReader();
-            lector.onload = function(e) {
+            lector.onload = async function(e) {
                 let respaldo;
                 try {
                     respaldo = JSON.parse(e.target.result);
@@ -185,40 +302,35 @@
                     return;
                 }
 
-                let clavesRespaldo = Object.keys(respaldo.datos);
-                if (clavesRespaldo.length === 0) {
-                    alert('El respaldo no contiene datos para restaurar.');
+                if (!Array.isArray(respaldo.datos.brw_datosBase) || !Array.isArray(respaldo.datos.brw_datosPagos_v10)) {
+                    alert('El respaldo no contiene contratos/recibos para restaurar.');
                     event.target.value = '';
                     return;
                 }
 
-                if (!confirm('Esto reemplazará los datos actuales, ¿continuar?')) {
+                if (!confirm('Esto reemplazará TODOS los datos actuales (de todo el negocio), ¿continuar?')) {
                     event.target.value = '';
                     return;
                 }
 
-                // Elimina solo las claves propias de la aplicación antes de restaurar
-                Object.keys(localStorage)
-                    .filter(clave => clave.startsWith(PREFIJO_CLAVES_APP))
-                    .forEach(clave => localStorage.removeItem(clave));
-
-                clavesRespaldo.forEach(clave => {
-                    let valor = respaldo.datos[clave];
-                    localStorage.setItem(clave, typeof valor === 'string' ? valor : JSON.stringify(valor));
-                });
-
-                alert('¡Respaldo restaurado con éxito! La página se recargará.');
-                event.target.value = '';
-                location.reload();
+                mostrarCargando(true, 'Restaurando el respaldo...');
+                try {
+                    await apiFetch('/respaldo/restaurar', {
+                        method: 'POST',
+                        body: JSON.stringify({ datos: respaldo.datos }),
+                    });
+                    alert('¡Respaldo restaurado con éxito! La página se recargará.');
+                    event.target.value = '';
+                    location.reload();
+                } catch (err) {
+                    alert('No se pudo restaurar el respaldo: ' + err.message);
+                    mostrarCargando(false);
+                }
             };
             lector.onerror = function() {
                 alert('No se pudo leer el archivo seleccionado.');
             };
             lector.readAsText(archivo, 'UTF-8');
-        }
-
-        function esVacio(valor) {
-            return valor === undefined || valor === null || (typeof valor === 'string' && valor.trim() === '');
         }
 
         // Carga un .json de respaldo y, a diferencia de "Restaurar Respaldo" (que
@@ -232,7 +344,7 @@
             if (!archivo) return;
 
             let lector = new FileReader();
-            lector.onload = function(e) {
+            lector.onload = async function(e) {
                 let respaldo;
                 try {
                     respaldo = JSON.parse(e.target.result);
@@ -258,41 +370,28 @@
                     return;
                 }
 
-                let camposCompletados = 0;
-                let contratosActualizados = 0;
-                let contratosAgregados = 0;
+                mostrarCargando(true, 'Completando datos...');
+                try {
+                    let resultado = await apiFetch('/contratos/completar', {
+                        method: 'POST',
+                        body: JSON.stringify({ contratos: contratosImportados }),
+                    });
 
-                contratosImportados.forEach(imp => {
-                    if (!imp || !imp.contrato) return;
-                    let existente = datosBase.find(c => c.contrato === imp.contrato);
+                    datosBase = normalizarContratos(await apiFetch('/contratos'));
+                    if (typeof window.aplicarFiltros === 'function') window.aplicarFiltros();
 
-                    if (existente) {
-                        let seCompletoAlgo = false;
-                        Object.keys(imp).forEach(campo => {
-                            if (campo === 'item') return; // el índice interno no se toca
-                            if (esVacio(existente[campo]) && !esVacio(imp[campo])) {
-                                existente[campo] = imp[campo];
-                                camposCompletados++;
-                                seCompletoAlgo = true;
-                            }
-                        });
-                        if (seCompletoAlgo) contratosActualizados++;
-                    } else {
-                        datosBase.push({ ...imp, item: (datosBase.length + 1).toString() });
-                        contratosAgregados++;
-                    }
-                });
-
-                guardarEnLocalStorage();
-                if (typeof window.aplicarFiltros === 'function') window.aplicarFiltros();
-
-                alert(
-                    `Listo.\n\n` +
-                    `Campos completados: ${camposCompletados} (en ${contratosActualizados} contratos existentes)\n` +
-                    `Contratos nuevos agregados (no existían): ${contratosAgregados}\n\n` +
-                    `No se sobrescribió ningún dato que ya estuviera diligenciado.`
-                );
-                event.target.value = '';
+                    alert(
+                        `Listo.\n\n` +
+                        `Campos completados: ${resultado.camposCompletados} (en ${resultado.contratosActualizados} contratos existentes)\n` +
+                        `Contratos nuevos agregados (no existían): ${resultado.contratosAgregados}\n\n` +
+                        `No se sobrescribió ningún dato que ya estuviera diligenciado.`
+                    );
+                } catch (err) {
+                    alert('No se pudo completar los datos: ' + err.message);
+                } finally {
+                    mostrarCargando(false);
+                    event.target.value = '';
+                }
             };
             lector.onerror = function() {
                 alert('No se pudo leer el archivo seleccionado.');
@@ -330,8 +429,8 @@
             if (!archivo) return;
 
             let lector = new FileReader();
-            lector.onload = function(e) {
-                procesarCSVImportado(e.target.result);
+            lector.onload = async function(e) {
+                await procesarCSVImportado(e.target.result);
                 event.target.value = '';
             };
             lector.onerror = function() {
@@ -341,8 +440,9 @@
         }
 
         // Convierte el texto del CSV en contratos (y recibos, si el CSV los trae)
-        // usando el mapeo de columnas definido en MAPEO_CSV_IMPORTACION.
-        function procesarCSVImportado(texto) {
+        // usando el mapeo de columnas definido en MAPEO_CSV_IMPORTACION, y los
+        // envía en un solo lote al backend para guardarlos en la base de datos.
+        async function procesarCSVImportado(texto) {
             // Quita el BOM inicial (marca de orden de bytes) si el archivo lo trae
             if (texto.charCodeAt(0) === 0xFEFF) texto = texto.slice(1);
             let lineas = texto.split(/\r\n|\n|\r/).filter(l => l.trim() !== '');
@@ -368,6 +468,8 @@
 
             let importados = 0;
             let omitidos = 0;
+            let contratosNuevos = [];
+            let pagosNuevos = [];
             let numerosContrato = datosBase.map(c => parseInt(c.contrato) || 0);
             let maxContrato = numerosContrato.length ? Math.max(...numerosContrato) : 0;
             let mesesNombre = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -392,7 +494,6 @@
                 let propietario = obtener('propietario') || 'INDEPENDIENTE';
 
                 let nuevoContrato = {
-                    item: (datosBase.length + 1).toString(),
                     contrato: maxContrato.toString(),
                     estudio: 'N/A',
                     estado: 'Activo',
@@ -413,7 +514,7 @@
                     fechaIni: '',
                     fechaVto: ''
                 };
-                datosBase.push(nuevoContrato);
+                contratosNuevos.push(nuevoContrato);
 
                 // Si el CSV incluye fecha de pago, crea también el recibo asociado
                 let fechaPago = obtener('fechaPago');
@@ -437,7 +538,7 @@
                     let comision = Math.round(rawCanon * 0.10);
                     let netoPropietario = rawCanon - comision;
 
-                    datosPagos.unshift({
+                    pagosNuevos.push({
                         arrendatario: arrendatario,
                         cedulaArr: cedulaArr,
                         propietario: propietario,
@@ -473,10 +574,24 @@
                 importados++;
             }
 
-            if (importados > 0) {
-                guardarEnLocalStorage();
-                if (typeof window.aplicarFiltros === 'function') window.aplicarFiltros();
-                cargarTablaPagos();
+            if (contratosNuevos.length > 0) {
+                mostrarCargando(true, 'Guardando registros importados...');
+                try {
+                    await apiFetch('/importar-csv', {
+                        method: 'POST',
+                        body: JSON.stringify({ contratos: contratosNuevos, pagos: pagosNuevos }),
+                    });
+                    let [contratos, pagos] = await Promise.all([apiFetch('/contratos'), apiFetch('/pagos')]);
+                    datosBase = normalizarContratos(contratos);
+                    datosPagos = normalizarPagos(pagos);
+                    if (typeof window.aplicarFiltros === 'function') window.aplicarFiltros();
+                    cargarTablaPagos();
+                } catch (err) {
+                    alert('No se pudo guardar la importación: ' + err.message);
+                    mostrarCargando(false);
+                    return;
+                }
+                mostrarCargando(false);
             }
 
             alert(`Importación finalizada.\nRegistros importados: ${importados}\nRegistros omitidos (incompletos): ${omitidos}`);
@@ -492,10 +607,14 @@
         // ni reemplazar los demás datos que se estén corrigiendo).
         let modoNuevoRecibo = true;
 
+        // Cierra la sesión actual (borra el token guardado) y vuelve a mostrar
+        // la pantalla de inicio de sesión.
         function salirAplicacion() {
-            if(confirm('¿Desea salir de la aplicación?')) {
-                window.close();
-                window.location.href = "about:blank";
+            if (confirm('¿Desea cerrar sesión?')) {
+                borrarToken();
+                datosBase = [];
+                datosPagos = [];
+                mostrarLogin();
             }
         }
 
@@ -563,8 +682,39 @@
         }
 
         $(document).ready(function() {
-            aplicarFiltros();
-            cargarTablaPagos();
+            inicializarAutenticacion();
+
+            $('#formLogin').on('submit', async function(evento) {
+                evento.preventDefault();
+                let usuario = $('#loginUsuario').val().trim();
+                let clave = $('#loginClave').val();
+                if (!usuario || !clave) return;
+
+                $('#loginError').hide();
+                $('#btnLogin').prop('disabled', true).text('Ingresando...');
+                try {
+                    // Se usa fetch directo (no apiFetch) porque todavía no hay token:
+                    // apiFetch trataría un 401 aquí como "sesión expirada" y volvería a
+                    // mostrar el login en un ciclo, cuando en realidad es un intento fallido.
+                    let respuesta = await fetch(API_BASE_URL + '/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ usuario, clave }),
+                    });
+                    let cuerpo = null;
+                    try { cuerpo = await respuesta.json(); } catch (e) { /* sin cuerpo */ }
+                    if (!respuesta.ok) {
+                        throw new Error((cuerpo && cuerpo.error) || 'Usuario o clave incorrectos.');
+                    }
+                    guardarToken(cuerpo.token);
+                    $('#formLogin')[0].reset();
+                    await iniciarApp();
+                } catch (err) {
+                    $('#loginError').text(err.message).show();
+                } finally {
+                    $('#btnLogin').prop('disabled', false).text('Ingresar');
+                }
+            });
 
             $('#pagoValorDescProp, #pagoDescuento').on('input keyup change', calcularLiquidacionPropietario);
 
@@ -729,8 +879,8 @@
             });
 
             // GUARDAR RECIBO DE CAJA CON VALIDACIÓN DE MES/AÑO
-            $('#btnGuardarPago').on('click', function() {
-                let indexPago = $('#editIndexPago').val();
+            $('#btnGuardarPago').on('click', async function() {
+                let idPago = $('#editIndexPago').val();
                 let contrato = $('#pagoContratoAsociado').val();
                 let arrendatario = $('#inputBusquedaCedula').val();
                 let cedulaArr = $('#pagoCedulaArr').val();
@@ -747,14 +897,14 @@
                 // período, en vez de bloquear el guardado se le muestra el historial del contrato
                 // y se le pregunta si quiere ACTUALIZAR ese recibo existente con los datos que
                 // acaba de digitar (en lugar de crear uno duplicado).
-                if (indexPago == -1) {
-                    let indexExistente = datosPagos.findIndex(p => {
+                if (idPago == -1) {
+                    let existentePago = datosPagos.find(p => {
                         return (p.contrato === contrato || p.arrendatario.toLowerCase() === arrendatario.toLowerCase())
                                && p.mes === mes
                                && p.ano.toString() === ano;
                     });
 
-                    if (indexExistente !== -1) {
+                    if (existentePago) {
                         let historialContrato = datosPagos
                             .filter(p => p.contrato === contrato)
                             .slice()
@@ -773,7 +923,7 @@
                         if (!confirm(mensaje)) return;
 
                         // Convierte el guardado en una edición del recibo ya existente
-                        indexPago = indexExistente;
+                        idPago = existentePago.id;
                     }
                 }
 
@@ -811,21 +961,34 @@
                     observaciones: $('#pagoObservaciones').val()
                 };
 
-                if(indexPago == -1) datosPagos.unshift(pagoObj);
-                else datosPagos[indexPago] = pagoObj;
-
-                guardarEnLocalStorage();
-                $('#modalNuevoPago').modal('hide');
-                cargarTablaPagos();
-                alert('¡Recibo y liquidación guardados con éxito!');
+                $('#btnGuardarPago').prop('disabled', true);
+                mostrarCargando(true, 'Guardando recibo...');
+                try {
+                    let pagoGuardado;
+                    if (idPago == -1) {
+                        pagoGuardado = await apiFetch('/pagos', { method: 'POST', body: JSON.stringify(pagoObj) });
+                        datosPagos.unshift(pagoGuardado);
+                    } else {
+                        pagoGuardado = await apiFetch('/pagos/' + idPago, { method: 'PUT', body: JSON.stringify(pagoObj) });
+                        let i = datosPagos.findIndex(p => p.id == idPago);
+                        if (i !== -1) datosPagos[i] = pagoGuardado;
+                    }
+                    $('#modalNuevoPago').modal('hide');
+                    cargarTablaPagos();
+                    alert('¡Recibo y liquidación guardados con éxito!');
+                } catch (err) {
+                    alert('No se pudo guardar el recibo: ' + err.message);
+                } finally {
+                    mostrarCargando(false);
+                    $('#btnGuardarPago').prop('disabled', false);
+                }
             });
 
-            $('#btnGuardar').on('click', function() {
-                let index = $('#editIndex').val();
+            $('#btnGuardar').on('click', async function() {
+                let idContrato = $('#editIndex').val();
                 let rawValCanon = obtenerValorLimpio($('#valCanonNumerico').val());
                 let rawValorRenovacion = obtenerValorLimpio($('#valValorRenovacion').val());
                 let nuevoObj = {
-                    item: index == -1 ? datosBase.length + 1 : datosBase[index].item,
                     contrato: $('#valContrato').val(),
                     estudio: $('#valEstudio').val() || 'N/A',
                     // Distingue los distintos inmuebles cuando el mismo propietario o
@@ -868,13 +1031,27 @@
                     alert('Complete los campos obligatorios.'); return;
                 }
 
-                if(index == -1) datosBase.push(nuevoObj);
-                else datosBase[index] = nuevoObj;
-
-                guardarEnLocalStorage();
-                $('#modalAdicionar').modal('hide');
-                aplicarFiltros();
-                alert('¡Contrato guardado con éxito!');
+                $('#btnGuardar').prop('disabled', true);
+                mostrarCargando(true, 'Guardando contrato...');
+                try {
+                    let contratoGuardado;
+                    if (idContrato == -1) {
+                        contratoGuardado = await apiFetch('/contratos', { method: 'POST', body: JSON.stringify(nuevoObj) });
+                        datosBase.push(contratoGuardado);
+                    } else {
+                        contratoGuardado = await apiFetch('/contratos/' + idContrato, { method: 'PUT', body: JSON.stringify(nuevoObj) });
+                        let i = datosBase.findIndex(c => c.id == idContrato);
+                        if (i !== -1) datosBase[i] = contratoGuardado;
+                    }
+                    $('#modalAdicionar').modal('hide');
+                    aplicarFiltros();
+                    alert('¡Contrato guardado con éxito!');
+                } catch (err) {
+                    alert('No se pudo guardar el contrato: ' + err.message);
+                } finally {
+                    mostrarCargando(false);
+                    $('#btnGuardar').prop('disabled', false);
+                }
             });
         });
 
@@ -885,7 +1062,6 @@
                 tbody = `<tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron contratos.</td></tr>`;
             } else {
                 lista.forEach((item) => {
-                    let originalIndex = datosBase.indexOf(item);
                     let badgeClass = item.estado === "Activo" ? "badge-status-active" : "badge-status-inactive";
                     // Insignia "Suc. N": distingue cuando el mismo propietario/arrendatario
                     // tiene varios inmuebles (ej. Miguel Venegas Suc. 1, Suc. 2, Suc. 3...)
@@ -900,9 +1076,9 @@
                             <td class="fw-bold text-success">${item.canon}</td>
                             <td><span class="badge bg-light text-dark border">Día ${item.diaLimite}</span></td>
                             <td class="text-center">
-                                <button class="btn btn-outline-info btn-action" onclick="abrirModalDetalle(${originalIndex})" title="Ver Detalles"><i class="fas fa-eye"></i></button>
-                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditar(${originalIndex})" title="Editar Contrato"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-outline-danger btn-action" onclick="eliminarContrato(${originalIndex})" title="Eliminar Contrato"><i class="fas fa-trash"></i></button>
+                                <button class="btn btn-outline-info btn-action" onclick="abrirModalDetalle(${item.id})" title="Ver Detalles"><i class="fas fa-eye"></i></button>
+                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditar(${item.id})" title="Editar Contrato"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-danger btn-action" onclick="eliminarContrato(${item.id})" title="Eliminar Contrato"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
                     `;
@@ -947,7 +1123,6 @@
                 tbody = `<tr><td colspan="15" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
             } else {
                 paginados.forEach((p) => {
-                    let originalIndex = datosPagos.indexOf(p);
                     let badgeLiq = (p.tipoLiquidacion === 'anual') ? 'bg-warning text-dark' : ((p.tipoLiquidacion === 'no_aplica') ? 'bg-secondary text-white' : 'bg-info text-dark');
                     let totalConsignadoNum = Number(p.totalConsignado) || 0;
                     let netoPropNum = Number(p.netoPropietario) || 0;
@@ -978,9 +1153,9 @@
                             <td>${p.fechaProp || '<span class="text-muted">Pendiente</span>'}</td>
                             <td><span class="badge ${badgePropClass}">${p.estadoProp || 'CONFIRMADO'}</span></td>
                             <td class="text-center">
-                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditarPago(${originalIndex})" title="Editar Recibo"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-outline-primary btn-action" onclick="imprimirComprobante(${originalIndex})" title="Imprimir Comprobante Propietario"><i class="fas fa-print"></i></button>
-                                <button class="btn btn-outline-danger btn-action" onclick="eliminarPago(${originalIndex})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditarPago(${p.id})" title="Editar Recibo"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-primary btn-action" onclick="imprimirComprobante(${p.id})" title="Imprimir Comprobante Propietario"><i class="fas fa-print"></i></button>
+                                <button class="btn btn-outline-danger btn-action" onclick="eliminarPago(${p.id})" title="Eliminar"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
                     `;
@@ -1070,8 +1245,9 @@
             cargarTablaPagos(obtenerPagosFiltrados());
         }
 
-        function abrirModalDetalle(index) {
-            let item = datosBase[index];
+        function abrirModalDetalle(id) {
+            let item = datosBase.find(c => c.id == id);
+            if (!item) return;
             $('#detContrato').text(item.contrato || '-');
             $('#detEstudio').text(item.estudio || '-');
             $('#detSucursal').text(item.sucursal || 'N/A');
@@ -1130,9 +1306,10 @@
             $('#modalVerDetalle').modal('show');
         }
 
-        function abrirModalEditar(index) {
-            let item = datosBase[index];
-            $('#editIndex').val(index);
+        function abrirModalEditar(id) {
+            let item = datosBase.find(c => c.id == id);
+            if (!item) return;
+            $('#editIndex').val(id);
             $('#valContrato').val(item.contrato);
             $('#valEstudio').val(item.estudio || '');
             $('#valSucursal').val(item.sucursal || '');
@@ -1167,11 +1344,17 @@
             $('#modalAdicionar').modal('show');
         }
 
-        function eliminarContrato(index) {
-            if(confirm('¿Está seguro de eliminar este contrato?')) {
-                datosBase.splice(index, 1);
-                guardarEnLocalStorage();
-                aplicarFiltros();
+        async function eliminarContrato(id) {
+            if(!confirm('¿Está seguro de eliminar este contrato?')) return;
+            mostrarCargando(true, 'Eliminando contrato...');
+            try {
+                await apiFetch('/contratos/' + id, { method: 'DELETE' });
+                datosBase = datosBase.filter(c => c.id != id);
+                window.aplicarFiltros();
+            } catch (err) {
+                alert('No se pudo eliminar el contrato: ' + err.message);
+            } finally {
+                mostrarCargando(false);
             }
         }
 
@@ -1179,14 +1362,14 @@
         // el número/fecha de factura originales. Se usa tanto al abrir "Editar" desde
         // la tabla como al detectar, mientras se está registrando uno nuevo, que ya
         // existe un recibo para el arrendatario/contrato y período seleccionados.
-        function poblarFormularioPagoDesdeRegistro(p, index) {
+        function poblarFormularioPagoDesdeRegistro(p) {
             // Muchos recibos importados del histórico de Excel no traen banco/cuenta
             // propios (ese dato solía diligenciarse solo en el contrato). Por eso, si
             // el recibo no lo tiene, se completa con lo que sí tenga su contrato en
             // vez de dejar el campo vacío.
             let contratoRelacionado = datosBase.find(c => c.contrato === p.contrato);
 
-            $('#editIndexPago').val(index);
+            $('#editIndexPago').val(p.id);
             $('#inputBusquedaCedula').val(p.arrendatario);
             $('#pagoCedulaArr').val(p.cedulaArr || '');
             $('#pagoPropietario').val(p.propietario || (contratoRelacionado ? contratoRelacionado.propietario : '') || '');
@@ -1259,34 +1442,43 @@
 
             let mes = $('#pagoMes').val();
             let ano = $('#pagoAno').val().toString();
-            let indexExistente = datosPagos.findIndex(p => p.contrato === contrato && p.mes === mes && p.ano.toString() === ano);
-            let indexActual = parseInt($('#editIndexPago').val(), 10);
+            let existente = datosPagos.find(p => p.contrato === contrato && p.mes === mes && p.ano.toString() === ano);
+            let idActual = $('#editIndexPago').val();
 
-            if (indexExistente !== -1) {
-                if (indexActual !== indexExistente) {
-                    poblarFormularioPagoDesdeRegistro(datosPagos[indexExistente], indexExistente);
+            if (existente) {
+                if (idActual != existente.id) {
+                    poblarFormularioPagoDesdeRegistro(existente);
                 }
-            } else if (indexActual !== -1) {
+            } else if (idActual != -1) {
                 resetearCamposPeriodoPago();
             }
         }
 
-        function abrirModalEditarPago(index) {
+        function abrirModalEditarPago(id) {
             modoNuevoRecibo = false;
-            poblarFormularioPagoDesdeRegistro(datosPagos[index], index);
+            let p = datosPagos.find(x => x.id == id);
+            if (!p) return;
+            poblarFormularioPagoDesdeRegistro(p);
             $('#modalNuevoPago').modal('show');
         }
 
-        function eliminarPago(index) {
-            if(confirm('¿Está seguro de eliminar este registro?')) {
-                datosPagos.splice(index, 1);
-                guardarEnLocalStorage();
+        async function eliminarPago(id) {
+            if(!confirm('¿Está seguro de eliminar este registro?')) return;
+            mostrarCargando(true, 'Eliminando recibo...');
+            try {
+                await apiFetch('/pagos/' + id, { method: 'DELETE' });
+                datosPagos = datosPagos.filter(p => p.id != id);
                 cargarTablaPagos();
+            } catch (err) {
+                alert('No se pudo eliminar el recibo: ' + err.message);
+            } finally {
+                mostrarCargando(false);
             }
         }
 
-        function imprimirComprobante(index) {
-            let p = datosPagos[index];
+        function imprimirComprobante(id) {
+            let p = datosPagos.find(x => x.id == id);
+            if (!p) return;
             let contratoDelPago = datosBase.find(c => c.contrato === p.contrato);
             let sucursalPago = contratoDelPago ? (contratoDelPago.sucursal || '') : '';
             let descPropHtml = p.valorDescProp > 0

@@ -16,6 +16,46 @@
 </head>
 <body>
 
+    <!-- Pantalla de carga: se muestra mientras se verifica la sesión o se está
+         esperando una respuesta del servidor (guardar, cargar datos, etc.). El
+         backend gratuito de Render puede tardar hasta un minuto en "despertar"
+         si nadie lo usó en los últimos 15 minutos; por eso el mensaje avisa. -->
+    <div id="pantallaCarga" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(15,23,42,0.75); color:#fff; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:1rem;">
+        <div class="spinner-border text-light mb-3" role="status" style="width:3rem; height:3rem;"><span class="visually-hidden">Cargando...</span></div>
+        <p class="mb-0 fw-semibold">Cargando información...</p>
+        <p class="small text-light opacity-75 mt-1">La primera petición puede tardar hasta un minuto si el servidor estaba dormido.</p>
+    </div>
+
+    <!-- Modal de inicio de sesión: clave/usuario compartidos por todo el negocio.
+         No tiene botón de cerrar ni se puede tapar haciendo clic afuera: sin
+         sesión válida no se puede ver ni editar ningún dato. -->
+    <div class="modal fade" id="modalLogin" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header modal-header-luxury">
+                    <div class="modal-title-luxury"><i class="fas fa-lock me-2" style="color: var(--brand-gold);"></i>Iniciar Sesión</div>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formLogin">
+                        <div class="alert alert-danger py-2" id="loginError" style="display:none;"></div>
+                        <div class="mb-3">
+                            <label class="form-label">Usuario</label>
+                            <input type="text" class="form-control" id="loginUsuario" autocomplete="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Clave</label>
+                            <input type="password" class="form-control" id="loginClave" autocomplete="current-password" required>
+                        </div>
+                        <button type="submit" class="btn btn-luxury-primary w-100" id="btnLogin">Ingresar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Todo el contenido de la aplicación permanece oculto hasta iniciar sesión -->
+    <div id="contenidoApp" style="display:none;">
+
     <!-- Lista de bancos sugeridos (compartida por los campos de banco de Contrato y
          Recibo). Es solo una ayuda de autocompletado: al ser un <input> con
          "list", el campo acepta cualquier texto, así el banco guardado (aunque no
@@ -671,6 +711,8 @@
             </div>
         </div>
     </div>
+
+    </div> <!-- /#contenidoApp -->
 
     <!-- Scripts JS -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
