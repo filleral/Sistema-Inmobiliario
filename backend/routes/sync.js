@@ -138,8 +138,11 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
             }
 
             const arrendatario = textoOVacio(fila.arrendatario);
-            const estadoPagoTexto = textoOVacio(fila.estadoArr).toUpperCase();
 
+            // El script de Google Sheets ya normaliza estadoArr/estadoProp a
+            // "CONFIRMADO"/"PENDIENTE"/"" (vacío si el texto no se reconoce),
+            // así que acá solo se usa tal cual — nunca se fuerza un estado
+            // cuando el Excel trae algo que no se entendió.
             const camposDirectos = soloConValor({
                 arrendatario,
                 cedulaArr: textoOVacio(fila.cedulaArr),
@@ -150,9 +153,17 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
                 totalConsignado: numeroOVacio(fila.totalConsignado),
                 formaPago: textoOVacio(fila.formaPago),
                 fechaPago: textoOVacio(fila.fechaPago) || null,
-                estadoArr: estadoPagoTexto ? (estadoPagoTexto === 'OK' || estadoPagoTexto === 'CONFIRMADO' ? 'CONFIRMADO' : 'PENDIENTE') : '',
+                estadoArr: textoOVacio(fila.estadoArr),
                 propietario: textoOVacio(fila.propietario),
                 cedulaProp: textoOVacio(fila.cedulaProp),
+                titularConsignar: textoOVacio(fila.titularConsignar),
+                cedulaTitular: textoOVacio(fila.cedulaTitular),
+                bancoProp: textoOVacio(fila.bancoProp),
+                cuentaProp: textoOVacio(fila.cuentaProp),
+                netoPropietario: numeroOVacio(fila.netoPropietario),
+                formaProp: textoOVacio(fila.formaProp),
+                fechaProp: textoOVacio(fila.fechaProp) || null,
+                estadoProp: textoOVacio(fila.estadoProp),
             });
 
             const existenteRes = await cliente.query(
