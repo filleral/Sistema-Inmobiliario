@@ -14,6 +14,7 @@ const rutasContratos = require('./routes/contratos');
 const rutasPagos = require('./routes/pagos');
 const rutasRespaldo = require('./routes/respaldo');
 const rutasImportar = require('./routes/importar');
+const rutasSync = require('./routes/sync');
 
 const app = express();
 const PUERTO = process.env.PORT || 3000;
@@ -51,6 +52,7 @@ app.use('/api/contratos', rutasContratos);
 app.use('/api/pagos', rutasPagos);
 app.use('/api/respaldo', rutasRespaldo);
 app.use('/api/importar-csv', rutasImportar);
+app.use('/api/sync', rutasSync);
 
 // Manejador de errores genérico (por ejemplo, el error de CORS de arriba).
 app.use((err, req, res, next) => {

@@ -22,3 +22,5 @@ services:
         sync: false
       - key: ALLOWED_ORIGIN
         value: https://filleral.github.io
+      - key: SYNC_SECRET
+        sync: false
