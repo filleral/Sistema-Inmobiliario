@@ -884,13 +884,11 @@
                 let contrato = $('#pagoContratoAsociado').val();
                 let arrendatario = $('#inputBusquedaCedula').val();
                 let cedulaArr = $('#pagoCedulaArr').val();
-                let fechaPago = $('#pagoFechaPago').val();
+                // Sin campos obligatorios: si no se indica fecha de recibo, se usa
+                // la de hoy (la base de datos sí necesita alguna fecha guardada).
+                let fechaPago = $('#pagoFechaPago').val() || new Date().toISOString().slice(0, 10);
                 let mes = $('#pagoMes').val();
                 let ano = $('#pagoAno').val().toString();
-
-                if(!contrato || !arrendatario || !fechaPago) {
-                    alert('Complete los campos obligatorios (*).'); return;
-                }
 
                 // La validación de duplicados solo aplica al REGISTRAR un recibo nuevo (no al
                 // editar uno existente). Si ya hay un recibo para este arrendatario en el mismo

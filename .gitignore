@@ -4,3 +4,6 @@ BD ARCHIVOS COMPLETA.xlsx
 Respaldo_desde_Excel.json
 Respaldo_BRW_*.json
 backend/respaldos_pre_deploy/
+# Trae la clave secreta de sincronización (CONFIG_SECRETO) — no debe subirse
+# a GitHub, el repo es público.
+SyncBienesRaicesWhite.gs
