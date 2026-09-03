@@ -4,18 +4,19 @@
 // backend/middleware/syncSecret.js (no con usuario/clave de una persona).
 //
 // Reglas importantes (decididas con el cliente):
-//  - "Inmuebles" -> contratos: SIEMPRE actualiza contrato/estudio/cédula/
-//    arrendatario/estado con lo que diga el Excel (el Excel manda en esos
-//    campos). NUNCA toca propietario, banco, canon, fechas, celular,
-//    correo, etc. — esos solo se editan desde la web.
+//  - NUNCA se elimina ni se vacía nada. Si una celda del Excel viene vacía,
+//    ese campo simplemente NO se toca en la web (se deja lo que ya había).
+//    Solo se escribe cuando el Excel sí trae un valor.
+//  - "Inmuebles" -> contratos: contrato/estudio/cédula/arrendatario/estado/
+//    sucursal/día límite se actualizan con lo que traiga el Excel (cuando
+//    no venga vacío). Nunca toca propietario, banco, canon, fechas del
+//    contrato, celular, correo, etc. — esos solo se editan desde la web.
 //  - "BD 2026" -> pagos (recibos): se empareja por contrato+mes+año (igual
-//    que ya hace la propia app al detectar un recibo existente). Si el
-//    recibo ya existe, SOLO actualiza tipo de liquidación, fecha de
-//    factura, cédula y nombre del arrendatario — NUNCA toca canon, total,
-//    comisión, neto ni los estados de pago (eso lo escribe Clara desde la
-//    web con los valores reales). Si el recibo no existe todavía, se crea
-//    en $0 con estado "PENDIENTE" para que quede visible y alguien lo
-//    complete con el valor real.
+//    que ya hace la propia app al detectar un recibo existente). Trae
+//    también los valores reales (canon, total consignado, forma/fecha de
+//    pago, estado, propietario, número de factura) cuando el Excel los
+//    trae. Si el recibo no existe todavía, se crea con lo que haya (y
+//    "PENDIENTE" si el Excel no trae estado) para que quede visible.
 'use strict';
 
 const express = require('express');
@@ -27,6 +28,47 @@ const router = express.Router();
 
 function textoOVacio(v) {
     return (v === undefined || v === null) ? '' : String(v).trim();
+}
+
+// El script de Google Sheets ya manda estos valores como número JSON limpio
+// (lee el valor numérico real de la celda, no el texto con puntos/comas que
+// se ve en pantalla), así que acá solo se valida — no hace falta parsear
+// formato colombiano de nuevo.
+function numeroOVacio(v) {
+    if (v === undefined || v === null || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+}
+
+// Arma el objeto de campos a actualizar tomando SOLO las claves de
+// "posibles" cuyo valor no sea vacío/null — así una celda en blanco del
+// Excel nunca borra un dato que ya existía en la web.
+function soloConValor(posibles) {
+    const resultado = {};
+    Object.keys(posibles).forEach((campo) => {
+        const v = posibles[campo];
+        if (v !== '' && v !== null && v !== undefined) resultado[campo] = v;
+    });
+    return resultado;
+}
+
+async function actualizarOInsertar(cliente, tabla, camposTabla, valoresFn, existenteId, camposDirectos, datosCompletosNuevo) {
+    if (existenteId) {
+        const nombresCampos = Object.keys(camposDirectos);
+        if (nombresCampos.length === 0) return 'sinCambios';
+        const asignaciones = nombresCampos.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
+        const valores = nombresCampos.map((c) => camposDirectos[c]);
+        await cliente.query(
+            `UPDATE ${tabla} SET ${asignaciones}, "actualizadoEn" = now() WHERE id = $${nombresCampos.length + 1}`,
+            [...valores, existenteId]
+        );
+        return 'actualizado';
+    }
+    const valores = valoresFn(datosCompletosNuevo);
+    const nombresColumnas = camposTabla.map((c) => `"${c}"`).join(', ');
+    const marcadores = camposTabla.map((_, i) => `$${i + 1}`).join(', ');
+    await cliente.query(`INSERT INTO ${tabla} (${nombresColumnas}) VALUES (${marcadores}) ON CONFLICT DO NOTHING`, valores);
+    return 'agregado';
 }
 
 router.post('/excel', verificarSecretoSync, async (req, res) => {
@@ -52,31 +94,22 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
             if (!contrato || !arrendatario) { resumen.filasOmitidas++; continue; }
 
             const existenteRes = await cliente.query('SELECT id FROM contratos WHERE contrato = $1', [contrato]);
-            const camposDirectos = {
+            const camposDirectos = soloConValor({
                 estudio: textoOVacio(fila.estudio),
                 cedulaArr: textoOVacio(fila.cedulaArr),
                 arrendatario,
-                estado: textoOVacio(fila.estado) || 'Activo',
-            };
-            if (textoOVacio(fila.sucursal)) camposDirectos.sucursal = textoOVacio(fila.sucursal);
+                estado: textoOVacio(fila.estado),
+                sucursal: textoOVacio(fila.sucursal),
+                diaLimite: textoOVacio(fila.diaLimite),
+            });
 
-            if (existenteRes.rows[0]) {
-                const nombresCampos = Object.keys(camposDirectos);
-                const asignaciones = nombresCampos.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
-                const valores = nombresCampos.map((c) => camposDirectos[c]);
-                await cliente.query(
-                    `UPDATE contratos SET ${asignaciones}, "actualizadoEn" = now() WHERE id = $${nombresCampos.length + 1}`,
-                    [...valores, existenteRes.rows[0].id]
-                );
-                resumen.contratosActualizados++;
-            } else {
-                const datosNuevos = { contrato, direccion: 'SIN DIRECCIÓN (pendiente completar)', ...camposDirectos };
-                const valores = valoresContrato(datosNuevos);
-                const nombresColumnas = CAMPOS_CONTRATO.map((c) => `"${c}"`).join(', ');
-                const marcadores = CAMPOS_CONTRATO.map((_, i) => `$${i + 1}`).join(', ');
-                await cliente.query(`INSERT INTO contratos (${nombresColumnas}) VALUES (${marcadores}) ON CONFLICT (contrato) DO NOTHING`, valores);
-                resumen.contratosAgregados++;
-            }
+            const resultado = await actualizarOInsertar(
+                cliente, 'contratos', CAMPOS_CONTRATO, valoresContrato,
+                existenteRes.rows[0]?.id, camposDirectos,
+                { contrato, direccion: 'SIN DIRECCIÓN (pendiente completar)', estado: 'Activo', ...camposDirectos }
+            );
+            if (resultado === 'actualizado') resumen.contratosActualizados++;
+            else if (resultado === 'agregado') resumen.contratosAgregados++;
         }
 
         // ---- Pestaña "BD 2026" -> pagos (recibos) ----
@@ -86,59 +119,67 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
             const ano = textoOVacio(fila.ano);
             if (!contrato || !mes || !ano) { resumen.filasOmitidas++; continue; }
 
-            const arrendatario = textoOVacio(fila.arrendatario);
-            const cedulaArr = textoOVacio(fila.cedulaArr);
-            const tipoLiquidacion = textoOVacio(fila.tipoLiquidacion).toLowerCase();
-            const fechaFactura = textoOVacio(fila.fechaFactura) || null;
             const sucursal = textoOVacio(fila.sucursal);
-
-            // "BD 2026" es la única de las dos pestañas que trae la Sucursal,
-            // así que de paso se refleja en el contrato (columna que sí lee
-            // "Inmuebles" en pantalla y en los recibos).
-            if (sucursal) {
-                await cliente.query(
-                    'UPDATE contratos SET sucursal = $1, "actualizadoEn" = now() WHERE contrato = $2',
-                    [sucursal, contrato]
-                );
+            const diaLimite = textoOVacio(fila.diaLimite);
+            // "BD 2026" también puede traer Sucursal/Día Límite, que en
+            // realidad son datos del CONTRATO (se reflejan ahí, igual que
+            // hace "Inmuebles"), no del recibo puntual.
+            if (sucursal || diaLimite) {
+                const camposContrato = soloConValor({ sucursal, diaLimite });
+                if (Object.keys(camposContrato).length > 0) {
+                    const nombresCampos = Object.keys(camposContrato);
+                    const asignaciones = nombresCampos.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
+                    const valores = nombresCampos.map((c) => camposContrato[c]);
+                    await cliente.query(
+                        `UPDATE contratos SET ${asignaciones}, "actualizadoEn" = now() WHERE contrato = $${nombresCampos.length + 1}`,
+                        [...valores, contrato]
+                    );
+                }
             }
+
+            const arrendatario = textoOVacio(fila.arrendatario);
+            const estadoPagoTexto = textoOVacio(fila.estadoArr).toUpperCase();
+
+            const camposDirectos = soloConValor({
+                arrendatario,
+                cedulaArr: textoOVacio(fila.cedulaArr),
+                tipoLiquidacion: textoOVacio(fila.tipoLiquidacion).toLowerCase(),
+                fechaFactura: textoOVacio(fila.fechaFactura) || null,
+                numeroFactura: textoOVacio(fila.numeroFactura),
+                canon: numeroOVacio(fila.canon),
+                totalConsignado: numeroOVacio(fila.totalConsignado),
+                formaPago: textoOVacio(fila.formaPago),
+                fechaPago: textoOVacio(fila.fechaPago) || null,
+                estadoArr: estadoPagoTexto ? (estadoPagoTexto === 'OK' || estadoPagoTexto === 'CONFIRMADO' ? 'CONFIRMADO' : 'PENDIENTE') : '',
+                propietario: textoOVacio(fila.propietario),
+                cedulaProp: textoOVacio(fila.cedulaProp),
+            });
 
             const existenteRes = await cliente.query(
                 'SELECT id FROM pagos WHERE contrato = $1 AND mes = $2 AND ano = $3 ORDER BY id LIMIT 1',
                 [contrato, mes, ano]
             );
 
-            const camposDirectos = { tipoLiquidacion: tipoLiquidacion || 'mensual', "fechaFactura": fechaFactura };
-            if (arrendatario) camposDirectos.arrendatario = arrendatario;
-            if (cedulaArr) camposDirectos.cedulaArr = cedulaArr;
+            if (!existenteRes.rows[0] && !arrendatario) { resumen.filasOmitidas++; continue; } // arrendatario es NOT NULL al crear
 
-            if (existenteRes.rows[0]) {
-                const nombresCampos = Object.keys(camposDirectos);
-                const asignaciones = nombresCampos.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
-                const valores = nombresCampos.map((c) => camposDirectos[c]);
-                await cliente.query(
-                    `UPDATE pagos SET ${asignaciones}, "actualizadoEn" = now() WHERE id = $${nombresCampos.length + 1}`,
-                    [...valores, existenteRes.rows[0].id]
-                );
-                resumen.pagosActualizados++;
-            } else {
-                if (!arrendatario) { resumen.filasOmitidas++; continue; } // arrendatario es NOT NULL
-                // fechaPago es obligatoria; usamos la fecha de factura como
-                // aproximación, o el 1 del mes/año si tampoco vino, ya que
-                // el pago real todavía no se ha registrado.
-                const fechaPagoAprox = fechaFactura || `${ano}-01-01`;
-                const datosNuevos = {
-                    arrendatario, cedulaArr, contrato, mes, ano,
-                    fechaFactura, fechaPago: fechaPagoAprox,
-                    tipoLiquidacion: tipoLiquidacion || 'mensual',
-                    estadoArr: 'PENDIENTE',
-                    observaciones: 'Creado automáticamente desde el Excel (BD 2026); falta completar el valor real.',
-                };
-                const valores = valoresPago(datosNuevos);
-                const nombresColumnas = CAMPOS_PAGO.map((c) => `"${c}"`).join(', ');
-                const marcadores = CAMPOS_PAGO.map((_, i) => `$${i + 1}`).join(', ');
-                await cliente.query(`INSERT INTO pagos (${nombresColumnas}) VALUES (${marcadores})`, valores);
-                resumen.pagosAgregados++;
-            }
+            // fechaPago es obligatoria en la tabla; si el Excel todavía no
+            // trae la fecha real de pago, se usa la de factura, o el 1 del
+            // mes/año como último recurso, mientras se registra el pago real.
+            const fechaPagoParaCrear = camposDirectos.fechaPago || camposDirectos.fechaFactura || `${ano}-01-01`;
+
+            const resultado = await actualizarOInsertar(
+                cliente, 'pagos', CAMPOS_PAGO, valoresPago,
+                existenteRes.rows[0]?.id, camposDirectos,
+                {
+                    contrato, mes, ano, arrendatario,
+                    estadoArr: camposDirectos.estadoArr || 'PENDIENTE',
+                    fechaPago: fechaPagoParaCrear,
+                    observaciones: 'Creado automáticamente desde el Excel (BD 2026).',
+                    ...camposDirectos,
+                }
+            );
+            if (resultado === 'actualizado') resumen.pagosActualizados++;
+            else if (resultado === 'agregado') resumen.pagosAgregados++;
         }
 
         await cliente.query('COMMIT');
