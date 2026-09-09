@@ -208,6 +208,14 @@
             return datosBaseRaw || [];
         }
 
+        // El backend ya entrega los contratos ordenados por "actualizadoEn"
+        // (el más reciente creado o renovado primero); esto reordena la copia
+        // en memoria de la misma forma justo después de crear/editar uno,
+        // para que se vea arriba sin esperar a recargar la página.
+        function ordenarContratosPorRecencia() {
+            datosBase.sort((a, b) => (b.actualizadoEn || '').localeCompare(a.actualizadoEn || ''));
+        }
+
         // Trae los contratos y recibos reales desde el backend y arranca la app.
         // Se llama justo después de iniciar sesión (o al abrir la página si ya
         // había una sesión guardada).
@@ -1045,6 +1053,7 @@
                         let i = datosBase.findIndex(c => c.id == idContrato);
                         if (i !== -1) datosBase[i] = contratoGuardado;
                     }
+                    ordenarContratosPorRecencia();
                     $('#modalAdicionar').modal('hide');
                     aplicarFiltros();
                     alert('¡Contrato guardado con éxito!');
@@ -1079,14 +1088,11 @@
                     let renovacionGuardada = await apiFetch('/renovaciones', { method: 'POST', body: JSON.stringify(renovacionObj) });
                     datosRenovaciones.unshift(renovacionGuardada);
 
-                    // La renovación ya es el estado vigente del contrato: refresca
-                    // el contrato completo desde el servidor (canon/fechas quedaron
-                    // actualizados ahí) en vez de recalcularlo a mano acá.
-                    let contratoActualizado = await apiFetch('/contratos').then(lista => lista.find(c => c.id == idContrato));
-                    if (contratoActualizado) {
-                        let i = datosBase.findIndex(c => c.id == idContrato);
-                        if (i !== -1) datosBase[i] = normalizarContratos([contratoActualizado])[0];
-                    }
+                    // La renovación ya es el estado vigente del contrato: se
+                    // recarga la lista completa (canon/fechas quedaron
+                    // actualizados en el servidor, y ya viene ordenada por
+                    // el más reciente creado o renovado primero).
+                    datosBase = normalizarContratos(await apiFetch('/contratos'));
 
                     $('#modalRenovacion').modal('hide');
                     aplicarFiltros();
