@@ -142,11 +142,23 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
 
             const sucursal = textoOVacio(fila.sucursal);
             const diaLimite = textoOVacio(fila.diaLimite);
-            // "BD 2026" también puede traer Sucursal/Día Límite, que en
-            // realidad son datos del CONTRATO (se reflejan ahí, igual que
-            // hace "Inmuebles"), no del recibo puntual.
-            if (sucursal || diaLimite) {
+            const direccionPredio = textoOVacio(fila.direccionPredio);
+            // "BD 2026" también puede traer Sucursal/Día Límite/Dirección del
+            // Predio, que en realidad son datos del CONTRATO (se reflejan
+            // ahí, igual que hace "Inmuebles"), no del recibo puntual.
+            if (sucursal || diaLimite || direccionPredio) {
                 const camposContrato = soloConValor({ sucursal, diaLimite });
+                if (direccionPredio) {
+                    // La dirección "de verdad" viene de "Inmuebles"; esta solo
+                    // completa cuando el contrato todavía no tiene ninguna
+                    // (vacía o el marcador de "pendiente completar" que deja
+                    // un contrato creado solo desde este mismo sync).
+                    const actualRes = await cliente.query('SELECT direccion FROM contratos WHERE contrato = $1', [contrato]);
+                    const direccionActual = actualRes.rows[0]?.direccion || '';
+                    if (!direccionActual || direccionActual === 'SIN DIRECCIÓN (pendiente completar)') {
+                        camposContrato.direccion = direccionPredio;
+                    }
+                }
                 if (Object.keys(camposContrato).length > 0) {
                     const nombresCampos = Object.keys(camposContrato);
                     const asignaciones = nombresCampos.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
