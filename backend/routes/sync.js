@@ -170,6 +170,7 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
                 tipoLiquidacion: textoOVacio(fila.tipoLiquidacion).toLowerCase(),
                 fechaFactura: textoOVacio(fila.fechaFactura) || null,
                 numeroFactura: textoOVacio(fila.numeroFactura),
+                numeroReciboCaja: textoOVacio(fila.numeroReciboCaja),
                 canon: numeroOVacio(fila.canon),
                 totalConsignado: numeroOVacio(fila.totalConsignado),
                 formaPago: textoOVacio(fila.formaPago),

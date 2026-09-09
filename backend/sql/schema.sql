@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS pagos (
     "bancoProp" TEXT DEFAULT '',
     "cuentaProp" TEXT DEFAULT '',
     "numeroFactura" TEXT DEFAULT '',
+    "numeroReciboCaja" TEXT DEFAULT '',
+    "numeroComprobanteEgreso" TEXT DEFAULT '',
     "fechaFactura" DATE,
     "fechaPago" DATE NOT NULL,
     ano TEXT NOT NULL,

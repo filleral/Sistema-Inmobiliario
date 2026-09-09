@@ -169,6 +169,8 @@
                     bancoProp: p.bancoProp || "",
                     cuentaProp: p.cuentaProp || "",
                     numeroFactura: p.numeroFactura || "",
+                    numeroReciboCaja: p.numeroReciboCaja || "",
+                    numeroComprobanteEgreso: p.numeroComprobanteEgreso || "",
                     fechaFactura: p.fechaFactura || "",
                     fechaPago: p.fechaPago || '2026-01-01',
                     ano: (p.ano || 2026).toString(),
@@ -947,6 +949,8 @@
                     bancoProp: $('#pagoBancoProp').val() || '',
                     cuentaProp: $('#pagoCuentaProp').val() || '',
                     numeroFactura: $('#pagoNumeroFactura').val() || '',
+                    numeroReciboCaja: $('#pagoNumeroReciboCaja').val() || '',
+                    numeroComprobanteEgreso: $('#pagoNumeroComprobanteEgreso').val() || '',
                     fechaFactura: $('#pagoFechaFactura').val() || '',
                     fechaPago: fechaPago,
                     ano: ano,
@@ -1172,7 +1176,7 @@
 
             let tbody = "";
             if (totalRegistros === 0) {
-                tbody = `<tr><td colspan="15" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
+                tbody = `<tr><td colspan="17" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
             } else {
                 paginados.forEach((p) => {
                     let badgeLiq = (p.tipoLiquidacion === 'anual') ? 'bg-warning text-dark' : ((p.tipoLiquidacion === 'no_aplica') ? 'bg-secondary text-white' : 'bg-info text-dark');
@@ -1194,6 +1198,8 @@
                             <td><strong>#${p.contrato}</strong></td>
                             <td>${sucursalVal ? `<span class="badge bg-light text-dark border">Suc. ${sucursalVal}</span>` : '<span class="text-muted">-</span>'}</td>
                             <td>${p.numeroFactura || '<span class="text-muted">-</span>'}</td>
+                            <td>${p.numeroReciboCaja || '<span class="text-muted">-</span>'}</td>
+                            <td>${p.numeroComprobanteEgreso || '<span class="text-muted">-</span>'}</td>
                             <td><span class="badge bg-light text-dark border">Día ${diaLimiteVal}</span></td>
                             <td><span class="badge bg-light text-dark border">${p.formaPago || 'AV VILLAS'}</span></td>
                             <td><span class="badge ${badgeArrClass}">${p.estadoArr || 'CONFIRMADO'}</span></td>
@@ -1254,7 +1260,7 @@
 
             return datosPagos.filter(p => {
                 let matchContrato = datosBase.find(c => c.contrato === p.contrato);
-                let textoMatch = `${p.arrendatario} ${p.cedulaArr} ${p.propietario} ${p.cedulaProp} ${p.titularConsignar} ${p.cedulaTitular} ${p.contrato} ${p.formaPago} ${p.formaProp} ${p.numeroFactura || ''} ${matchContrato ? matchContrato.sucursal || '' : ''}`.toLowerCase().includes(val);
+                let textoMatch = `${p.arrendatario} ${p.cedulaArr} ${p.propietario} ${p.cedulaProp} ${p.titularConsignar} ${p.cedulaTitular} ${p.contrato} ${p.formaPago} ${p.formaProp} ${p.numeroFactura || ''} ${p.numeroReciboCaja || ''} ${p.numeroComprobanteEgreso || ''} ${matchContrato ? matchContrato.sucursal || '' : ''}`.toLowerCase().includes(val);
                 let mMatch = mes ? p.mes === mes : true;
                 let eMatch = estado ? (p.estadoArr === estado) : true;
                 let ePropMatch = estadoProp ? ((p.estadoProp || 'CONFIRMADO') === estadoProp) : true;
@@ -1496,6 +1502,8 @@
             $('#pagoSucursal').val(contratoRelacionado ? (contratoRelacionado.sucursal || '') : '');
             $('#pagoDireccionInmueble').val(p.direccion || '');
             $('#pagoNumeroFactura').val(p.numeroFactura || '');
+            $('#pagoNumeroReciboCaja').val(p.numeroReciboCaja || '');
+            $('#pagoNumeroComprobanteEgreso').val(p.numeroComprobanteEgreso || '');
             $('#pagoFechaFactura').val(p.fechaFactura || '');
             $('#pagoFechaPago').val(p.fechaPago || '');
             $('#pagoMes').val(p.mes || 'Agosto');
@@ -1527,6 +1535,8 @@
         function resetearCamposPeriodoPago() {
             $('#editIndexPago').val('-1');
             $('#pagoNumeroFactura').val('');
+            $('#pagoNumeroReciboCaja').val('');
+            $('#pagoNumeroComprobanteEgreso').val('');
             $('#pagoFechaFactura').val('');
             $('#pagoFechaPago').val('');
             $('#pagoConceptoDescArr').val('');
@@ -1635,6 +1645,8 @@
                         ${sucursalPago ? `<div class="col-6"><strong>Sucursal:</strong> ${sucursalPago}</div>` : ''}
                         <div class="col-6"><strong>Número de Factura:</strong> ${p.numeroFactura || 'N/A'}</div>
                         <div class="col-6"><strong>Fecha de Factura:</strong> ${p.fechaFactura || 'N/A'}</div>
+                        <div class="col-6"><strong>No. Recibo de Caja:</strong> ${p.numeroReciboCaja || 'N/A'}</div>
+                        <div class="col-6"><strong>No. Comprobante de Egreso:</strong> ${p.numeroComprobanteEgreso || 'N/A'}</div>
                     </div>
                     <table class="table table-bordered table-sm mb-4">
                         <thead class="table-light">
@@ -1785,7 +1797,7 @@
                 return;
             }
 
-            let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Sucursal;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Número de Factura;Fecha de Factura;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
+            let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Sucursal;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Número de Factura;Número Recibo de Caja;Número Comprobante de Egreso;Fecha de Factura;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
 
             datosAExportar.forEach(p => {
                 let matchContrato = datosBase.find(c => c.contrato === p.contrato);
@@ -1808,6 +1820,8 @@
                     p.cuentaProp || '',
                     p.direccion || '',
                     p.numeroFactura || '',
+                    p.numeroReciboCaja || '',
+                    p.numeroComprobanteEgreso || '',
                     p.fechaFactura || '',
                     p.fechaPago || '',
                     p.ano || '',

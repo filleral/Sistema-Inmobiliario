@@ -41,7 +41,8 @@ const DEFECTOS_CONTRATO = {
 const CAMPOS_PAGO = [
     'arrendatario', 'cedulaArr', 'propietario', 'cedulaProp',
     'titularConsignar', 'cedulaTitular', 'bancoProp', 'cuentaProp',
-    'numeroFactura', 'fechaFactura', 'fechaPago', 'ano', 'mes', 'contrato',
+    'numeroFactura', 'numeroReciboCaja', 'numeroComprobanteEgreso',
+    'fechaFactura', 'fechaPago', 'ano', 'mes', 'contrato',
     'direccion', 'formaPago', 'estadoArr', 'canon', 'conceptoDescArr',
     'descuento', 'totalConsignado', 'tipoLiquidacion', 'comision',
     'valor4x1000', 'conceptoDescProp', 'valorDescProp', 'netoPropietario',
@@ -53,7 +54,7 @@ const CAMPOS_FECHA_PAGO = ['fechaFactura', 'fechaPago', 'fechaProp'];
 const DEFECTOS_PAGO = {
     cedulaArr: '', propietario: '', cedulaProp: '',
     titularConsignar: '', cedulaTitular: '', bancoProp: '', cuentaProp: '',
-    numeroFactura: '',
+    numeroFactura: '', numeroReciboCaja: '', numeroComprobanteEgreso: '',
     ano: '', mes: '',
     direccion: '',
     formaPago: 'AV VILLAS', estadoArr: 'CONFIRMADO',
