@@ -35,6 +35,7 @@
         // en memoria de lo que devolvió la API; se llenan en iniciarApp().
         let datosBase = [];
         let datosPagos = [];
+        let datosRenovaciones = [];
 
         // ==========================================================================
         // SESIÓN / LOGIN — el backend exige una clave compartida para todo el
@@ -214,12 +215,14 @@
             ocultarLogin();
             mostrarCargando(true, 'Cargando contratos y recibos...');
             try {
-                let [contratos, pagos] = await Promise.all([
+                let [contratos, pagos, renovaciones] = await Promise.all([
                     apiFetch('/contratos'),
                     apiFetch('/pagos'),
+                    apiFetch('/renovaciones'),
                 ]);
                 datosBase = normalizarContratos(contratos);
                 datosPagos = normalizarPagos(pagos);
+                datosRenovaciones = renovaciones;
                 window.aplicarFiltros();
                 cargarTablaPagos();
             } catch (err) {
@@ -240,10 +243,11 @@
             try {
                 await apiFetch('/respaldo/restaurar', {
                     method: 'POST',
-                    body: JSON.stringify({ datos: { brw_datosBase: [], brw_datosPagos_v10: [] } }),
+                    body: JSON.stringify({ datos: { brw_datosBase: [], brw_datosPagos_v10: [], brw_renovaciones: [] } }),
                 });
                 datosBase = [];
                 datosPagos = [];
+                datosRenovaciones = [];
                 window.aplicarFiltros();
                 cargarTablaPagos();
                 alert('¡Datos restaurados con éxito!');
@@ -1051,6 +1055,49 @@
                     $('#btnGuardar').prop('disabled', false);
                 }
             });
+
+            $('#btnGuardarRenovacion').on('click', async function() {
+                let idContrato = $('#renContratoId').val();
+                let contratoActual = datosBase.find(c => c.id == idContrato);
+                if (!contratoActual) { alert('No se encontró el contrato.'); return; }
+
+                let fechaRenovacion = $('#renFechaRenovacion').val();
+                if (!fechaRenovacion) { alert('Indique la fecha de renovación.'); return; }
+
+                let renovacionObj = {
+                    contrato: contratoActual.contrato,
+                    fechaRenovacion: fechaRenovacion,
+                    canonAnterior: contratoActual.rawCanon || 0,
+                    canonNuevo: obtenerValorLimpio($('#renCanonNuevo').val()),
+                    nuevaFechaVto: $('#renNuevaFechaVto').val() || '',
+                    observaciones: $('#renObservaciones').val() || '',
+                };
+
+                $('#btnGuardarRenovacion').prop('disabled', true);
+                mostrarCargando(true, 'Registrando renovación...');
+                try {
+                    let renovacionGuardada = await apiFetch('/renovaciones', { method: 'POST', body: JSON.stringify(renovacionObj) });
+                    datosRenovaciones.unshift(renovacionGuardada);
+
+                    // La renovación ya es el estado vigente del contrato: refresca
+                    // el contrato completo desde el servidor (canon/fechas quedaron
+                    // actualizados ahí) en vez de recalcularlo a mano acá.
+                    let contratoActualizado = await apiFetch('/contratos').then(lista => lista.find(c => c.id == idContrato));
+                    if (contratoActualizado) {
+                        let i = datosBase.findIndex(c => c.id == idContrato);
+                        if (i !== -1) datosBase[i] = normalizarContratos([contratoActualizado])[0];
+                    }
+
+                    $('#modalRenovacion').modal('hide');
+                    aplicarFiltros();
+                    alert('¡Renovación registrada con éxito!');
+                } catch (err) {
+                    alert('No se pudo registrar la renovación: ' + err.message);
+                } finally {
+                    mostrarCargando(false);
+                    $('#btnGuardarRenovacion').prop('disabled', false);
+                }
+            });
         });
 
         function renderizarTablaContratos(lista, total) {
@@ -1076,6 +1123,7 @@
                             <td class="text-center">
                                 <button class="btn btn-outline-info btn-action" onclick="abrirModalDetalle(${item.id})" title="Ver Detalles"><i class="fas fa-eye"></i></button>
                                 <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditar(${item.id})" title="Editar Contrato"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-success btn-action" onclick="abrirModalRenovacion(${item.id})" title="Registrar Renovación"><i class="fas fa-rotate"></i></button>
                                 <button class="btn btn-outline-danger btn-action" onclick="eliminarContrato(${item.id})" title="Eliminar Contrato"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
@@ -1301,6 +1349,34 @@
             }
             $('#detHistorialPagos').html(filasHistorial);
 
+            // Historial de Renovaciones: todas las veces que este contrato se
+            // ha renovado, de la más reciente a la más antigua.
+            let historialRenovaciones = datosRenovaciones
+                .filter(r => r.contrato === item.contrato)
+                .slice()
+                .sort((a, b) => (b.fechaRenovacion || '').localeCompare(a.fechaRenovacion || ''));
+
+            let filasRenovaciones = '';
+            if (historialRenovaciones.length === 0) {
+                filasRenovaciones = `<tr><td colspan="6" class="text-center text-muted py-3">Este contrato todavía no registra renovaciones.</td></tr>`;
+            } else {
+                historialRenovaciones.forEach(r => {
+                    filasRenovaciones += `
+                        <tr>
+                            <td>${r.fechaRenovacion || '-'}</td>
+                            <td class="text-end">$ ${(Number(r.canonAnterior) || 0).toLocaleString()}</td>
+                            <td class="text-end fw-bold text-success">$ ${(Number(r.canonNuevo) || 0).toLocaleString()}</td>
+                            <td>${r.nuevaFechaVto || '-'}</td>
+                            <td>${r.observaciones || '-'}</td>
+                            <td class="text-center">
+                                <button class="btn btn-outline-danger btn-action" onclick="eliminarRenovacion(${r.id})" title="Eliminar registro"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            $('#detHistorialRenovaciones').html(filasRenovaciones);
+
             $('#modalVerDetalle').modal('show');
         }
 
@@ -1351,6 +1427,39 @@
                 window.aplicarFiltros();
             } catch (err) {
                 alert('No se pudo eliminar el contrato: ' + err.message);
+            } finally {
+                mostrarCargando(false);
+            }
+        }
+
+        // Abre el modal para registrar una nueva renovación del contrato,
+        // precargando el canon actual como "Canon Anterior" (de referencia) y
+        // sugiriendo la fecha de hoy y el vencimiento actual del contrato.
+        function abrirModalRenovacion(id) {
+            let item = datosBase.find(c => c.id == id);
+            if (!item) return;
+            $('#renContratoId').val(item.id);
+            $('#renContratoDisplay').val('#' + item.contrato + ' — ' + item.arrendatario);
+            $('#renCanonAnterior').val(formatearMonedaInput(item.rawCanon || 0));
+            $('#renFechaRenovacion').val(new Date().toISOString().slice(0, 10));
+            $('#renCanonNuevo').val('');
+            $('#renNuevaFechaVto').val(item.fechaVto || '');
+            $('#renObservaciones').val('');
+            $('#modalRenovacion').modal('show');
+        }
+
+        async function eliminarRenovacion(id) {
+            if (!confirm('¿Eliminar este registro de renovación? No se puede deshacer.')) return;
+            mostrarCargando(true, 'Eliminando renovación...');
+            try {
+                await apiFetch('/renovaciones/' + id, { method: 'DELETE' });
+                datosRenovaciones = datosRenovaciones.filter(r => r.id != id);
+                // Refresca la tabla del historial si el modal de detalle sigue abierto
+                let numeroContrato = $('#detContrato').text().trim();
+                let contratoActual = datosBase.find(c => c.contrato === numeroContrato);
+                if (contratoActual) abrirModalDetalle(contratoActual.id);
+            } catch (err) {
+                alert('No se pudo eliminar la renovación: ' + err.message);
             } finally {
                 mostrarCargando(false);
             }

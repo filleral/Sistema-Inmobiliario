@@ -615,7 +615,7 @@
                             <div class="col-md-12"><strong>Inmueble / Dirección:</strong> <span id="detDireccion"></span></div>
                         </div>
                     </div>
-                    <div class="card p-3 border-0 shadow-sm" style="border-radius: 14px;">
+                    <div class="card p-3 mb-3 border-0 shadow-sm" style="border-radius: 14px;">
                         <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);"><i class="fas fa-clock-rotate-left me-1"></i>Historial de Pagos del Inmueble</h6>
                         <div class="table-responsive">
                             <table class="table table-sm table-hover mb-0 small">
@@ -626,9 +626,68 @@
                             </table>
                         </div>
                     </div>
+                    <div class="card p-3 border-0 shadow-sm" style="border-radius: 14px;">
+                        <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);"><i class="fas fa-rotate me-1"></i>Historial de Renovaciones</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 small">
+                                <thead>
+                                    <tr><th>Fecha</th><th class="text-end">Canon Anterior</th><th class="text-end">Canon Nuevo</th><th>Nuevo Vto.</th><th>Observaciones</th><th></th></tr>
+                                </thead>
+                                <tbody id="detHistorialRenovaciones"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer bg-light border-0">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Registrar Renovación de Contrato -->
+    <div class="modal fade" id="modalRenovacion" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header modal-header-luxury">
+                    <div class="modal-title-luxury"><i class="fas fa-rotate me-2" style="color: var(--brand-gold);"></i>Registrar Renovación de Contrato</div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formRenovacion">
+                        <input type="hidden" id="renContratoId" value="">
+                        <div class="mb-3">
+                            <label class="form-label">Contrato</label>
+                            <input type="text" class="form-control bg-light fw-bold" id="renContratoDisplay" readonly>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Fecha de Renovación</label>
+                                <input type="date" class="form-control" id="renFechaRenovacion">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Canon Anterior ($)</label>
+                                <input type="text" class="form-control bg-light" id="renCanonAnterior" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Canon Nuevo ($)</label>
+                                <input type="text" class="form-control" id="renCanonNuevo" placeholder="Nuevo valor del canon" oninput="formatearEntradaMoneda(this)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nueva Fecha de Vencimiento</label>
+                                <input type="date" class="form-control" id="renNuevaFechaVto" title="Opcional: si el contrato también extendió su vencimiento">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Observaciones</label>
+                                <textarea class="form-control" id="renObservaciones" rows="2" placeholder="Ej: Incremento IPC, renovación anual..."></textarea>
+                            </div>
+                        </div>
+                    </form>
+                    <p class="text-muted small mt-2 mb-0"><i class="fas fa-circle-info me-1"></i>Este registro queda guardado permanentemente en el historial del contrato y actualiza el canon (y el vencimiento, si lo indicas) como su estado vigente.</p>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-luxury-primary" id="btnGuardarRenovacion">Registrar Renovación</button>
                 </div>
             </div>
         </div>
