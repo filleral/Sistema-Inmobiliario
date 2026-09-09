@@ -63,6 +63,17 @@ const DEFECTOS_PAGO = {
     formaProp: 'AV VILLAS', estadoProp: 'CONFIRMADO', observaciones: '',
 };
 
+const CAMPOS_RENOVACION = [
+    'contrato', 'fechaRenovacion', 'canonAnterior', 'canonNuevo',
+    'nuevaFechaVto', 'observaciones',
+];
+
+const CAMPOS_FECHA_RENOVACION = ['fechaRenovacion', 'nuevaFechaVto'];
+
+const DEFECTOS_RENOVACION = {
+    canonAnterior: 0, canonNuevo: 0, observaciones: '',
+};
+
 function limpiarUno(campo, valor, camposFecha, defectos) {
     if (camposFecha.includes(campo)) {
         return (valor === '' || valor === undefined || valor === null) ? null : valor;
@@ -86,6 +97,11 @@ function valoresPago(datosCrudos) {
     return CAMPOS_PAGO.map((campo) => limpiarUno(campo, datos[campo], CAMPOS_FECHA_PAGO, DEFECTOS_PAGO));
 }
 
+function valoresRenovacion(datosCrudos) {
+    const datos = datosCrudos || {};
+    return CAMPOS_RENOVACION.map((campo) => limpiarUno(campo, datos[campo], CAMPOS_FECHA_RENOVACION, DEFECTOS_RENOVACION));
+}
+
 // Variante para UPDATE parcial (solo los campos que se le pasen, tal cual
 // vienen — usado por "completar", que ya decide cuáles campos tocar).
 function limpiarValorContrato(campo, valor) {
@@ -95,7 +111,9 @@ function limpiarValorContrato(campo, valor) {
 module.exports = {
     CAMPOS_CONTRATO,
     CAMPOS_PAGO,
+    CAMPOS_RENOVACION,
     valoresContrato,
     valoresPago,
+    valoresRenovacion,
     limpiarValorContrato,
 };

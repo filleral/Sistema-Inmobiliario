@@ -93,3 +93,21 @@ CREATE TABLE IF NOT EXISTS pagos (
 CREATE INDEX IF NOT EXISTS idx_pagos_contrato ON pagos (contrato);
 CREATE INDEX IF NOT EXISTS idx_pagos_mes_ano ON pagos (mes, ano);
 CREATE INDEX IF NOT EXISTS idx_pagos_arrendatario ON pagos (arrendatario);
+
+-- Historial de renovaciones: un registro permanente por cada vez que un
+-- contrato se renueva (antes solo se guardaba un dato suelto de "próxima
+-- renovación" en el contrato, que se perdía al editarlo). Sin FK física
+-- hacia contratos, por la misma razón que "pagos": no bloquear ni borrar
+-- historial si el contrato se elimina.
+CREATE TABLE IF NOT EXISTS renovaciones (
+    id SERIAL PRIMARY KEY,
+    contrato TEXT NOT NULL,
+    "fechaRenovacion" DATE NOT NULL,
+    "canonAnterior" NUMERIC(14, 2) DEFAULT 0,
+    "canonNuevo" NUMERIC(14, 2) DEFAULT 0,
+    "nuevaFechaVto" DATE,
+    observaciones TEXT DEFAULT '',
+    "creadoEn" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_renovaciones_contrato ON renovaciones (contrato);
