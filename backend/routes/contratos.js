@@ -14,7 +14,10 @@ function estaVacio(valor) {
 
 router.get('/', verificarToken, async (req, res) => {
     try {
-        const resultado = await pool.query('SELECT * FROM contratos ORDER BY id');
+        // El más reciente primero: "actualizadoEn" cambia tanto al crear un
+        // contrato como al editarlo o registrar una renovación, así que el
+        // último creado o renovado siempre queda arriba de la tabla.
+        const resultado = await pool.query('SELECT * FROM contratos ORDER BY "actualizadoEn" DESC, id DESC');
         res.json(resultado.rows);
     } catch (err) {
         console.error('Error listando contratos:', err);
