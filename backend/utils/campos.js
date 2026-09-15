@@ -11,7 +11,7 @@
 'use strict';
 
 const CAMPOS_CONTRATO = [
-    'item', 'contrato', 'estudio', 'sucursal', 'estado', 'arrendatario',
+    'item', 'contrato', 'estudio', 'sucursal', 'sucursalArrendatario', 'estado', 'arrendatario',
     'cedulaArr', 'celArr', 'correoArr',
     'codeudor', 'cedulaCodeudor', 'celCodeudor', 'correoCodeudor',
     'propietario', 'cedulaProp', 'celProp', 'correoProp',
@@ -27,6 +27,7 @@ const DEFECTOS_CONTRATO = {
     item: '',
     estudio: 'N/A',
     sucursal: '',
+    sucursalArrendatario: '',
     estado: 'Activo',
     cedulaArr: '', celArr: '', correoArr: '',
     codeudor: '', cedulaCodeudor: '', celCodeudor: '', correoCodeudor: '',

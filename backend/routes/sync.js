@@ -106,6 +106,7 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
                 correoCodeudor: textoOVacio(fila.correoCodeudor),
                 estado: textoOVacio(fila.estado),
                 sucursal: textoOVacio(fila.sucursal),
+                sucursalArrendatario: textoOVacio(fila.sucursalArrendatario),
                 cedulaProp: textoOVacio(fila.cedulaProp),
                 propietario: textoOVacio(fila.propietario),
                 celProp: textoOVacio(fila.celProp),
@@ -140,14 +141,19 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
             const ano = textoOVacio(fila.ano);
             if (!contrato || !mes || !ano) { resumen.filasOmitidas++; continue; }
 
+            // "sucursal" numera los inmuebles del PROPIETARIO (viene de
+            // "SUCURSAL PROPIETARIO"); "sucursalArrendatario" numera los del
+            // ARRENDATARIO (viene de "SUC", junto a sus datos) — son
+            // independientes, un mismo contrato puede tener las dos.
             const sucursal = textoOVacio(fila.sucursal);
+            const sucursalArrendatario = textoOVacio(fila.sucursalArrendatario);
             const diaLimite = textoOVacio(fila.diaLimite);
             const direccionPredio = textoOVacio(fila.direccionPredio);
             // "BD 2026" también puede traer Sucursal/Día Límite/Dirección del
             // Predio, que en realidad son datos del CONTRATO (se reflejan
             // ahí, igual que hace "Inmuebles"), no del recibo puntual.
-            if (sucursal || diaLimite || direccionPredio) {
-                const camposContrato = soloConValor({ sucursal, diaLimite });
+            if (sucursal || sucursalArrendatario || diaLimite || direccionPredio) {
+                const camposContrato = soloConValor({ sucursal, sucursalArrendatario, diaLimite });
                 if (direccionPredio) {
                     // La dirección "de verdad" viene de "Inmuebles"; esta solo
                     // completa cuando el contrato todavía no tiene ninguna

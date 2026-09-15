@@ -853,6 +853,7 @@
                             data-cuenta="${c.cuentaProp || ''}" 
                             data-contrato="${c.contrato}"
                             data-sucursal="${c.sucursal || ''}"
+                            data-sucursalarr="${c.sucursalArrendatario || ''}"
                             data-direccion="${c.direccion}"
                             data-canon="${c.rawCanon || 0}">
                             <strong>Cédula: ${c.cedulaArr || 'N/A'}</strong> - ${c.arrendatario} <span class="text-muted">(Contrato #${c.contrato})</span>
@@ -874,6 +875,7 @@
                 $('#pagoContratoDisplay').val("#" + $(this).data('contrato'));
                 $('#pagoContratoAsociado').val($(this).data('contrato'));
                 $('#pagoSucursal').val($(this).data('sucursal') || '');
+                $('#pagoSucursalArr').val($(this).data('sucursalarr') || '');
                 $('#pagoDireccionInmueble').val($(this).data('direccion'));
                 $('#pagoCanon').val(formatearMonedaInput($(this).data('canon')));
                 $('#sugerenciasCedula').hide();
@@ -1005,9 +1007,11 @@
                 let nuevoObj = {
                     contrato: $('#valContrato').val(),
                     estudio: $('#valEstudio').val() || 'N/A',
-                    // Distingue los distintos inmuebles cuando el mismo propietario o
-                    // arrendatario tiene varios (Sucursal 1, Sucursal 2...)
+                    // Distingue los distintos inmuebles cuando el mismo PROPIETARIO
+                    // tiene varios (Sucursal 1, Sucursal 2...); sucursalArrendatario
+                    // hace lo mismo para cuando el mismo ARRENDATARIO tiene varios.
                     sucursal: $('#valSucursal').val() || '',
+                    sucursalArrendatario: $('#valSucursalArr').val() || '',
                     estado: $('#valEstado').val(),
                     arrendatario: $('#valArrendatario').val(),
                     cedulaArr: $('#valCedulaArr').val(),
@@ -1118,16 +1122,18 @@
             } else {
                 lista.forEach((item) => {
                     let badgeClass = item.estado === "Activo" ? "badge-status-active" : "badge-status-inactive";
-                    // Insignia "Suc. N": distingue cuando el mismo propietario/arrendatario
-                    // tiene varios inmuebles (ej. Miguel Venegas Suc. 1, Suc. 2, Suc. 3...)
-                    let badgeSucursal = item.sucursal ? ` <span class="badge bg-light text-dark border" style="font-size:0.65rem;">Suc. ${item.sucursal}</span>` : '';
+                    // Insignia "Suc. N": distingue cuando un mismo propietario o un mismo
+                    // arrendatario tiene varios inmuebles (ej. Miguel Venegas Suc. 1, Suc.
+                    // 2...) — cada uno con SU PROPIA numeración, no se mezclan.
+                    let badgeSucursalProp = item.sucursal ? ` <span class="badge bg-light text-dark border" style="font-size:0.65rem;">Suc. ${item.sucursal}</span>` : '';
+                    let badgeSucursalArr = item.sucursalArrendatario ? ` <span class="badge bg-light text-dark border" style="font-size:0.65rem;">Suc. ${item.sucursalArrendatario}</span>` : '';
                     tbody += `
                         <tr>
                             <td><strong style="color: var(--brand-navy);">#${item.contrato}</strong></td>
                             <td><span class="badge ${badgeClass}">${item.estado}</span></td>
-                            <td><strong class="text-dark">${item.arrendatario}</strong>${badgeSucursal}</td>
+                            <td><strong class="text-dark">${item.arrendatario}</strong>${badgeSucursalArr}</td>
                             <td>${item.direccion}</td>
-                            <td><span class="text-secondary">${item.propietario || 'N/A'}</span>${badgeSucursal}</td>
+                            <td><span class="text-secondary">${item.propietario || 'N/A'}</span>${badgeSucursalProp}</td>
                             <td class="fw-bold text-success">${item.canon}</td>
                             <td><span class="badge bg-light text-dark border">Día ${item.diaLimite}</span></td>
                             <td class="text-center">
@@ -1176,7 +1182,7 @@
 
             let tbody = "";
             if (totalRegistros === 0) {
-                tbody = `<tr><td colspan="17" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
+                tbody = `<tr><td colspan="18" class="text-center py-4 text-muted">No se encontraron recibos registrados.</td></tr>`;
             } else {
                 paginados.forEach((p) => {
                     let badgeLiq = (p.tipoLiquidacion === 'anual') ? 'bg-warning text-dark' : ((p.tipoLiquidacion === 'no_aplica') ? 'bg-secondary text-white' : 'bg-info text-dark');
@@ -1191,12 +1197,14 @@
                     let diaLimiteVal = matchContrato ? matchContrato.diaLimite : '5';
 
                     let sucursalVal = matchContrato && matchContrato.sucursal ? matchContrato.sucursal : '';
+                    let sucursalArrVal = matchContrato && matchContrato.sucursalArrendatario ? matchContrato.sucursalArrendatario : '';
 
                     tbody += `
                         <tr>
                             <td><strong>${p.arrendatario}</strong></td>
                             <td><strong>#${p.contrato}</strong></td>
                             <td>${sucursalVal ? `<span class="badge bg-light text-dark border">Suc. ${sucursalVal}</span>` : '<span class="text-muted">-</span>'}</td>
+                            <td>${sucursalArrVal ? `<span class="badge bg-light text-dark border">Suc. ${sucursalArrVal}</span>` : '<span class="text-muted">-</span>'}</td>
                             <td>${p.numeroFactura || '<span class="text-muted">-</span>'}</td>
                             <td>${p.numeroReciboCaja || '<span class="text-muted">-</span>'}</td>
                             <td>${p.numeroComprobanteEgreso || '<span class="text-muted">-</span>'}</td>
@@ -1309,6 +1317,7 @@
             $('#detContrato').text(item.contrato || '-');
             $('#detEstudio').text(item.estudio || '-');
             $('#detSucursal').text(item.sucursal || 'N/A');
+            $('#detSucursalArr').text(item.sucursalArrendatario || 'N/A');
             $('#detEstado').html(`<span class="badge ${item.estado === 'Activo' ? 'badge-status-active' : 'badge-status-inactive'}">${item.estado}</span>`);
             $('#detFechaIni').text(item.fechaIni || '-');
             $('#detFechaVto').text(item.fechaVto || '-');
@@ -1389,6 +1398,43 @@
             }
             $('#detHistorialRenovaciones').html(filasRenovaciones);
 
+            // Otros Inmuebles Relacionados: otros contratos del mismo
+            // propietario (por cédula) y/o del mismo arrendatario (por
+            // cédula) — para que un propietario o arrendatario con varios
+            // inmuebles se vea relacionado, no como registros sueltos.
+            let relacionados = datosBase.filter(c => {
+                if (c.id == item.id) return false;
+                let mismoProp = item.cedulaProp && c.cedulaProp === item.cedulaProp;
+                let mismoArr = item.cedulaArr && c.cedulaArr === item.cedulaArr;
+                return mismoProp || mismoArr;
+            });
+
+            let filasRelacionados = '';
+            if (relacionados.length === 0) {
+                filasRelacionados = `<tr><td colspan="6" class="text-center text-muted py-3">Este propietario y este arrendatario no tienen otros inmuebles registrados.</td></tr>`;
+            } else {
+                relacionados.forEach(c => {
+                    let mismoProp = item.cedulaProp && c.cedulaProp === item.cedulaProp;
+                    let mismoArr = item.cedulaArr && c.cedulaArr === item.cedulaArr;
+                    let relacion = (mismoProp && mismoArr) ? 'Mismo Propietario y Arrendatario' : (mismoProp ? 'Mismo Propietario' : 'Mismo Arrendatario');
+                    let sucursalMostrar = mismoProp ? (c.sucursal || '-') : (c.sucursalArrendatario || '-');
+                    let badgeEstado = c.estado === 'Activo' ? 'badge-status-active' : 'badge-status-inactive';
+                    filasRelacionados += `
+                        <tr>
+                            <td><strong>#${c.contrato}</strong></td>
+                            <td><span class="badge bg-light text-dark border">${relacion}</span></td>
+                            <td>${sucursalMostrar}</td>
+                            <td>${c.direccion || '-'}</td>
+                            <td><span class="badge ${badgeEstado}">${c.estado}</span></td>
+                            <td class="text-center">
+                                <button class="btn btn-outline-info btn-action" onclick="abrirModalDetalle(${c.id})" title="Ver este contrato"><i class="fas fa-eye"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            $('#detInmueblesRelacionados').html(filasRelacionados);
+
             $('#modalVerDetalle').modal('show');
         }
 
@@ -1399,6 +1445,7 @@
             $('#valContrato').val(item.contrato);
             $('#valEstudio').val(item.estudio || '');
             $('#valSucursal').val(item.sucursal || '');
+            $('#valSucursalArr').val(item.sucursalArrendatario || '');
             $('#valEstado').val(item.estado || 'Activo');
             $('#valArrendatario').val(item.arrendatario || '');
             $('#valCedulaArr').val(item.cedulaArr || '');
@@ -1500,6 +1547,7 @@
             $('#pagoContratoAsociado').val(p.contrato);
             $('#pagoContratoDisplay').val("#" + p.contrato);
             $('#pagoSucursal').val(contratoRelacionado ? (contratoRelacionado.sucursal || '') : '');
+            $('#pagoSucursalArr').val(contratoRelacionado ? (contratoRelacionado.sucursalArrendatario || '') : '');
             $('#pagoDireccionInmueble').val(p.direccion || '');
             $('#pagoNumeroFactura').val(p.numeroFactura || '');
             $('#pagoNumeroReciboCaja').val(p.numeroReciboCaja || '');
@@ -1689,6 +1737,7 @@
             $('#pagoContratoAsociado').val('');
             $('#pagoContratoDisplay').val('');
             $('#pagoSucursal').val('');
+            $('#pagoSucursalArr').val('');
             $('#pagoPropietario').val('');
             $('#pagoCedulaProp').val('');
             $('#pagoTitularConsignar').val('');
@@ -1739,7 +1788,7 @@
                 return;
             }
 
-            let csv = "\uFEFFItem;No. Contrato;No. Estudio;Sucursal;Estado;Arrendatario;Cédula/NIT Arrendatario;Celular Arrendatario;Correo Arrendatario;Codeudor;Cédula/NIT Codeudor;Celular Codeudor;Correo Codeudor;Propietario;Cédula Propietario;Celular Propietario;Correo Propietario;Titular a Consignar;Cédula Titular;Banco Propietario;Cuenta Propietario;Dirección Inmueble;Valor Canon;Día Límite;Fecha Inicial;Fecha Vencimiento;Fecha Aviso Vencimiento;Frecuencia de Pago;Fecha Próxima Renovación;Valor Renovación\n";
+            let csv = "\uFEFFItem;No. Contrato;No. Estudio;Sucursal Propietario;Sucursal Arrendatario;Estado;Arrendatario;Cédula/NIT Arrendatario;Celular Arrendatario;Correo Arrendatario;Codeudor;Cédula/NIT Codeudor;Celular Codeudor;Correo Codeudor;Propietario;Cédula Propietario;Celular Propietario;Correo Propietario;Titular a Consignar;Cédula Titular;Banco Propietario;Cuenta Propietario;Dirección Inmueble;Valor Canon;Día Límite;Fecha Inicial;Fecha Vencimiento;Fecha Aviso Vencimiento;Frecuencia de Pago;Fecha Próxima Renovación;Valor Renovación\n";
             
             datosAExportar.forEach(item => {
                 let fila = [
@@ -1747,6 +1796,7 @@
                     item.contrato || '',
                     item.estudio || '',
                     item.sucursal || '',
+                    item.sucursalArrendatario || '',
                     item.estado || '',
                     item.arrendatario || '',
                     item.cedulaArr || '',
@@ -1797,18 +1847,20 @@
                 return;
             }
 
-            let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Sucursal;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Número de Factura;Número Recibo de Caja;Número Comprobante de Egreso;Fecha de Factura;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
+            let csv = "\uFEFFArrendatario;Cédula/NIT Arrendatario;Contrato;Sucursal Propietario;Sucursal Arrendatario;Día Límite Pago;Medio Pago Arrendatario;Estado Recibo Arrendatario;Propietario Inmueble;Cédula Propietario;Titular Consignación;Cédula Titular;Banco Propietario;Número de Cuenta;Inmueble / Dirección;Número de Factura;Número Recibo de Caja;Número Comprobante de Egreso;Fecha de Factura;Fecha Recibo;Año;Mes;Canon Base;Motivo Desc. Arrendatario;Descuento Inquilino;Total Recaudado;Tipo Liquidación;Comisión Adm (10%);Deducción 4x1000;Concepto Desc. Propietario;Valor Desc. Propietario;Neto a Propietario;Fecha Pago Propietario;Medio Pago Propietario;Estado Consignación Propietario;Observaciones\n";
 
             datosAExportar.forEach(p => {
                 let matchContrato = datosBase.find(c => c.contrato === p.contrato);
                 let diaLimiteVal = matchContrato ? matchContrato.diaLimite : '5';
                 let sucursalVal = matchContrato ? (matchContrato.sucursal || '') : '';
+                let sucursalArrVal = matchContrato ? (matchContrato.sucursalArrendatario || '') : '';
 
                 let fila = [
                     p.arrendatario || '',
                     p.cedulaArr || '',
                     p.contrato || '',
                     sucursalVal,
+                    sucursalArrVal,
                     diaLimiteVal,
                     p.formaPago || 'AV VILLAS',
                     p.estadoArr || 'CONFIRMADO',

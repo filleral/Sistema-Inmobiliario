@@ -11,7 +11,12 @@ CREATE TABLE IF NOT EXISTS contratos (
     item TEXT,
     contrato TEXT NOT NULL UNIQUE,
     estudio TEXT DEFAULT 'N/A',
+    -- "sucursal" numera los distintos inmuebles de un mismo PROPIETARIO (ej.
+    -- Miguel Venegas: Sucursal 1, 2, 3...); "sucursalArrendatario" hace lo
+    -- mismo pero para cuando un mismo ARRENDATARIO tiene varios inmuebles
+    -- alquilados con nosotros. Son numeraciones independientes.
     sucursal TEXT DEFAULT '',
+    "sucursalArrendatario" TEXT DEFAULT '',
     estado TEXT NOT NULL DEFAULT 'Activo',
     arrendatario TEXT NOT NULL,
     "cedulaArr" TEXT DEFAULT '',

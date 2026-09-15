@@ -327,7 +327,8 @@
                                     <tr>
                                         <th>Arrendatario</th>
                                         <th>Contrato</th>
-                                        <th>Sucursal</th>
+                                        <th>Suc. Prop.</th>
+                                        <th>Suc. Arr.</th>
                                         <th>No. Factura</th>
                                         <th>No. Recibo Caja</th>
                                         <th>No. Comp. Egreso</th>
@@ -392,8 +393,12 @@
                                 <input type="text" class="form-control bg-light fw-bold" id="pagoContratoDisplay" readonly>
                             </div>
                             <div class="col-md-2">
-                                <label class="form-label">Sucursal</label>
-                                <input type="text" class="form-control bg-light" id="pagoSucursal" readonly title="Se toma del contrato: distingue cuando el mismo propietario o arrendatario tiene varios inmuebles">
+                                <label class="form-label">Sucursal Propietario</label>
+                                <input type="text" class="form-control bg-light" id="pagoSucursal" readonly title="Se toma del contrato: distingue cuando el mismo propietario tiene varios inmuebles">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Sucursal Arrendatario</label>
+                                <input type="text" class="form-control bg-light" id="pagoSucursalArr" readonly title="Se toma del contrato: distingue cuando el mismo arrendatario tiene varios inmuebles">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Inmueble / Dirección</label>
@@ -583,7 +588,8 @@
                         <div class="row g-2 small">
                             <div class="col-md-4"><strong>Contrato:</strong> <span id="detContrato"></span></div>
                             <div class="col-md-4"><strong>No. Estudio:</strong> <span id="detEstudio"></span></div>
-                            <div class="col-md-4"><strong>Sucursal:</strong> <span id="detSucursal"></span></div>
+                            <div class="col-md-4"><strong>Sucursal Propietario:</strong> <span id="detSucursal"></span></div>
+                            <div class="col-md-4"><strong>Sucursal Arrendatario:</strong> <span id="detSucursalArr"></span></div>
                             <div class="col-md-4"><strong>Estado:</strong> <span id="detEstado"></span></div>
                             <div class="col-md-4"><strong>F. Inicial:</strong> <span id="detFechaIni"></span></div>
                             <div class="col-md-4"><strong>F. Vencimiento:</strong> <span id="detFechaVto"></span></div>
@@ -636,7 +642,7 @@
                             </table>
                         </div>
                     </div>
-                    <div class="card p-3 border-0 shadow-sm" style="border-radius: 14px;">
+                    <div class="card p-3 mb-3 border-0 shadow-sm" style="border-radius: 14px;">
                         <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);"><i class="fas fa-rotate me-1"></i>Historial de Renovaciones</h6>
                         <div class="table-responsive">
                             <table class="table table-sm table-hover mb-0 small">
@@ -644,6 +650,18 @@
                                     <tr><th>Fecha</th><th class="text-end">Canon Anterior</th><th class="text-end">Canon Nuevo</th><th>Nuevo Vto.</th><th>Observaciones</th><th></th></tr>
                                 </thead>
                                 <tbody id="detHistorialRenovaciones"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card p-3 border-0 shadow-sm" style="border-radius: 14px;">
+                        <h6 class="fw-bold border-bottom pb-2" style="color: var(--brand-navy);"><i class="fas fa-diagram-project me-1"></i>Otros Inmuebles Relacionados</h6>
+                        <p class="text-muted small mb-2">Otros contratos del mismo propietario o del mismo arrendatario (para saber que "Suc. 1", "Suc. 2"... no quedan sueltos).</p>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 small">
+                                <thead>
+                                    <tr><th>Contrato</th><th>Relación</th><th>Sucursal</th><th>Dirección</th><th>Estado</th><th></th></tr>
+                                </thead>
+                                <tbody id="detInmueblesRelacionados"></tbody>
                             </table>
                         </div>
                     </div>
@@ -751,8 +769,12 @@
                             <div class="col-md-3"><label class="form-label">No. Contrato</label><input type="text" class="form-control bg-light" id="valContrato" readonly></div>
                             <div class="col-md-3"><label class="form-label">No. Estudio</label><input type="text" class="form-control" id="valEstudio"></div>
                             <div class="col-md-3">
-                                <label class="form-label">Sucursal</label>
-                                <input type="text" class="form-control" id="valSucursal" placeholder="Ej: 1, 2, 3..." title="Úsela cuando el mismo propietario o arrendatario tenga varios inmuebles, para diferenciarlos (Sucursal 1, Sucursal 2...)">
+                                <label class="form-label">Sucursal Propietario</label>
+                                <input type="text" class="form-control" id="valSucursal" placeholder="Ej: 1, 2, 3..." title="Úsela cuando el mismo PROPIETARIO tenga varios inmuebles, para diferenciarlos (Sucursal 1, Sucursal 2...)">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Sucursal Arrendatario</label>
+                                <input type="text" class="form-control" id="valSucursalArr" placeholder="Ej: 1, 2, 3..." title="Úsela cuando el mismo ARRENDATARIO tenga varios inmuebles alquilados, para diferenciarlos">
                             </div>
                             <div class="col-md-3"><label class="form-label">Estado</label><select class="form-select" id="valEstado"><option value="Activo">Activo</option><option value="Retirado">Retirado</option></select></div>
                             <div class="col-md-6"><label class="form-label">Dirección Inmueble</label><input type="text" class="form-control" id="valDireccion" required></div>
