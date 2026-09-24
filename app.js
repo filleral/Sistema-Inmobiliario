@@ -4,7 +4,7 @@
 
         // Dirección del backend (API) donde vive la base de datos real. Si el
         // backend se vuelve a desplegar con otra URL, solo hay que cambiarla acá.
-        const API_BASE_URL = 'https://brw-backend-4yr5.onrender.com/api';
+        const API_BASE_URL = 'https://brw-backend-iz2v.onrender.com/api';
 
         // Prefijo de las claves de localStorage propias de este sistema. Hoy solo
         // se usa para guardar la sesión (token) del navegador; los datos en sí ya
