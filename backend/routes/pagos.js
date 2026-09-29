@@ -41,6 +41,11 @@ router.post('/', verificarToken, async (req, res) => {
 });
 
 router.put('/:id', verificarToken, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: 'ID de recibo inválido.' });
+    }
+
     const datos = req.body || {};
     if (!datos.arrendatario || !datos.contrato || !datos.fechaPago) {
         return res.status(400).json({ error: 'Complete los campos obligatorios (*).' });
@@ -52,7 +57,7 @@ router.put('/:id', verificarToken, async (req, res) => {
     try {
         const resultado = await pool.query(
             `UPDATE pagos SET ${asignaciones}, "actualizadoEn" = now() WHERE id = $${CAMPOS_PAGO.length + 1} RETURNING *`,
-            [...valores, req.params.id]
+            [...valores, id]
         );
         if (resultado.rows.length === 0) {
             return res.status(404).json({ error: 'Recibo no encontrado.' });
@@ -65,8 +70,13 @@ router.put('/:id', verificarToken, async (req, res) => {
 });
 
 router.delete('/:id', verificarToken, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: 'ID de recibo inválido.' });
+    }
+
     try {
-        const resultado = await pool.query('DELETE FROM pagos WHERE id = $1 RETURNING id', [req.params.id]);
+        const resultado = await pool.query('DELETE FROM pagos WHERE id = $1 RETURNING id', [id]);
         if (resultado.rows.length === 0) {
             return res.status(404).json({ error: 'Recibo no encontrado.' });
         }

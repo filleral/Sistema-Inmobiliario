@@ -55,6 +55,18 @@
             localStorage.removeItem(CLAVE_TOKEN);
         }
 
+        // Función defensiva para evitar vulnerabilidades de Cross-Site Scripting (XSS)
+        // al inyectar cadenas de texto dinámicas en el HTML del documento.
+        function escaparHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         // Wrapper de fetch() que agrega automáticamente la sesión (token) a cada
         // llamada al backend, y maneja de forma centralizada los errores más
         // comunes (sin conexión, sesión vencida, error del servidor) para no
@@ -842,22 +854,30 @@
                 let filtrados = datosBase.filter(c => c.arrendatario.toLowerCase().includes(val) || (c.cedulaArr && c.cedulaArr.toLowerCase().includes(val)));
                 if(filtrados.length > 0) {
                     filtrados.forEach(c => {
-                        sugerenciasBox.append(`<div class="autocomplete-suggestion" 
-                            data-nombre="${c.arrendatario}" 
-                            data-cedulaarr="${c.cedulaArr || ''}"
-                            data-propietario="${c.propietario || 'INDEPENDIENTE'}" 
-                            data-cedulaprop="${c.cedulaProp || ''}"
-                            data-titular="${c.titularConsignar || c.propietario || 'INDEPENDIENTE'}"
-                            data-cedulatitular="${c.cedulaTitular || c.cedulaProp || ''}"
-                            data-banco="${c.bancoProp || ''}" 
-                            data-cuenta="${c.cuentaProp || ''}" 
-                            data-contrato="${c.contrato}"
-                            data-sucursal="${c.sucursal || ''}"
-                            data-sucursalarr="${c.sucursalArrendatario || ''}"
-                            data-direccion="${c.direccion}"
-                            data-canon="${c.rawCanon || 0}">
-                            <strong>Cédula: ${c.cedulaArr || 'N/A'}</strong> - ${c.arrendatario} <span class="text-muted">(Contrato #${c.contrato})</span>
-                        </div>`);
+                        let $sug = $('<div>')
+                            .addClass('autocomplete-suggestion')
+                            .attr({
+                                'data-nombre': c.arrendatario || '',
+                                'data-cedulaarr': c.cedulaArr || '',
+                                'data-propietario': c.propietario || 'INDEPENDIENTE',
+                                'data-cedulaprop': c.cedulaProp || '',
+                                'data-titular': c.titularConsignar || c.propietario || 'INDEPENDIENTE',
+                                'data-cedulatitular': c.cedulaTitular || c.cedulaProp || '',
+                                'data-banco': c.bancoProp || '',
+                                'data-cuenta': c.cuentaProp || '',
+                                'data-contrato': c.contrato || '',
+                                'data-sucursal': c.sucursal || '',
+                                'data-sucursalarr': c.sucursalArrendatario || '',
+                                'data-direccion': c.direccion || '',
+                                'data-canon': c.rawCanon || 0
+                            });
+                        $sug.append(
+                            $('<strong>').text('Cédula: ' + (c.cedulaArr || 'N/A')),
+                            ' - ' + (c.arrendatario || ''),
+                            ' ',
+                            $('<span>').addClass('text-muted').text('(Contrato #' + (c.contrato || '') + ')')
+                        );
+                        sugerenciasBox.append($sug);
                     });
                     sugerenciasBox.show();
                 } else { sugerenciasBox.hide(); }
@@ -1125,22 +1145,22 @@
                     // Insignia "Suc. N": distingue cuando un mismo propietario o un mismo
                     // arrendatario tiene varios inmuebles (ej. Miguel Venegas Suc. 1, Suc.
                     // 2...) — cada uno con SU PROPIA numeración, no se mezclan.
-                    let badgeSucursalProp = item.sucursal ? ` <span class="badge bg-light text-dark border" style="font-size:0.65rem;">Suc. ${item.sucursal}</span>` : '';
-                    let badgeSucursalArr = item.sucursalArrendatario ? ` <span class="badge bg-light text-dark border" style="font-size:0.65rem;">Suc. ${item.sucursalArrendatario}</span>` : '';
+                    let badgeSucursalProp = item.sucursal ? ` <span class="badge bg-light text-dark border" style="font-size:0.65rem;">Suc. ${escaparHTML(item.sucursal)}</span>` : '';
+                    let badgeSucursalArr = item.sucursalArrendatario ? ` <span class="badge bg-light text-dark border" style="font-size:0.65rem;">Suc. ${escaparHTML(item.sucursalArrendatario)}</span>` : '';
                     tbody += `
                         <tr>
-                            <td><strong style="color: var(--brand-navy);">#${item.contrato}</strong></td>
-                            <td><span class="badge ${badgeClass}">${item.estado}</span></td>
-                            <td><strong class="text-dark">${item.arrendatario}</strong>${badgeSucursalArr}</td>
-                            <td>${item.direccion}</td>
-                            <td><span class="text-secondary">${item.propietario || 'N/A'}</span>${badgeSucursalProp}</td>
-                            <td class="fw-bold text-success">${item.canon}</td>
-                            <td><span class="badge bg-light text-dark border">Día ${item.diaLimite}</span></td>
+                            <td><strong style="color: var(--brand-navy);">#${escaparHTML(item.contrato)}</strong></td>
+                            <td><span class="badge ${badgeClass}">${escaparHTML(item.estado)}</span></td>
+                            <td><strong class="text-dark">${escaparHTML(item.arrendatario)}</strong>${badgeSucursalArr}</td>
+                            <td>${escaparHTML(item.direccion)}</td>
+                            <td><span class="text-secondary">${escaparHTML(item.propietario || 'N/A')}</span>${badgeSucursalProp}</td>
+                            <td class="fw-bold text-success">${escaparHTML(item.canon)}</td>
+                            <td><span class="badge bg-light text-dark border">Día ${escaparHTML(item.diaLimite)}</span></td>
                             <td class="text-center">
-                                <button class="btn btn-outline-info btn-action" onclick="abrirModalDetalle(${item.id})" title="Ver Detalles"><i class="fas fa-eye"></i></button>
-                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditar(${item.id})" title="Editar Contrato"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-outline-success btn-action" onclick="abrirModalRenovacion(${item.id})" title="Registrar Renovación"><i class="fas fa-rotate"></i></button>
-                                <button class="btn btn-outline-danger btn-action" onclick="eliminarContrato(${item.id})" title="Eliminar Contrato"><i class="fas fa-trash"></i></button>
+                                <button class="btn btn-outline-info btn-action" onclick="abrirModalDetalle(${Number(item.id)})" title="Ver Detalles"><i class="fas fa-eye"></i></button>
+                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditar(${Number(item.id)})" title="Editar Contrato"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-success btn-action" onclick="abrirModalRenovacion(${Number(item.id)})" title="Registrar Renovación"><i class="fas fa-rotate"></i></button>
+                                <button class="btn btn-outline-danger btn-action" onclick="eliminarContrato(${Number(item.id)})" title="Eliminar Contrato"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
                     `;
@@ -1201,27 +1221,27 @@
 
                     tbody += `
                         <tr>
-                            <td><strong>${p.arrendatario}</strong></td>
-                            <td><strong>#${p.contrato}</strong></td>
-                            <td>${sucursalVal ? `<span class="badge bg-light text-dark border">Suc. ${sucursalVal}</span>` : '<span class="text-muted">-</span>'}</td>
-                            <td>${sucursalArrVal ? `<span class="badge bg-light text-dark border">Suc. ${sucursalArrVal}</span>` : '<span class="text-muted">-</span>'}</td>
-                            <td>${p.numeroFactura || '<span class="text-muted">-</span>'}</td>
-                            <td>${p.numeroReciboCaja || '<span class="text-muted">-</span>'}</td>
-                            <td>${p.numeroComprobanteEgreso || '<span class="text-muted">-</span>'}</td>
-                            <td><span class="badge bg-light text-dark border">Día ${diaLimiteVal}</span></td>
-                            <td><span class="badge bg-light text-dark border">${p.formaPago || 'AV VILLAS'}</span></td>
-                            <td><span class="badge ${badgeArrClass}">${p.estadoArr || 'CONFIRMADO'}</span></td>
-                            <td><strong style="color: var(--brand-navy);">${p.propietario || 'N/A'}</strong></td>
-                            <td>${p.fechaPago}</td>
-                            <td>${p.ano} / ${p.mes}</td>
+                            <td><strong>${escaparHTML(p.arrendatario)}</strong></td>
+                            <td><strong>#${escaparHTML(p.contrato)}</strong></td>
+                            <td>${sucursalVal ? `<span class="badge bg-light text-dark border">Suc. ${escaparHTML(sucursalVal)}</span>` : '<span class="text-muted">-</span>'}</td>
+                            <td>${sucursalArrVal ? `<span class="badge bg-light text-dark border">Suc. ${escaparHTML(sucursalArrVal)}</span>` : '<span class="text-muted">-</span>'}</td>
+                            <td>${p.numeroFactura ? escaparHTML(p.numeroFactura) : '<span class="text-muted">-</span>'}</td>
+                            <td>${p.numeroReciboCaja ? escaparHTML(p.numeroReciboCaja) : '<span class="text-muted">-</span>'}</td>
+                            <td>${p.numeroComprobanteEgreso ? escaparHTML(p.numeroComprobanteEgreso) : '<span class="text-muted">-</span>'}</td>
+                            <td><span class="badge bg-light text-dark border">Día ${escaparHTML(diaLimiteVal)}</span></td>
+                            <td><span class="badge bg-light text-dark border">${escaparHTML(p.formaPago || 'AV VILLAS')}</span></td>
+                            <td><span class="badge ${badgeArrClass}">${escaparHTML(p.estadoArr || 'CONFIRMADO')}</span></td>
+                            <td><strong style="color: var(--brand-navy);">${escaparHTML(p.propietario || 'N/A')}</strong></td>
+                            <td>${escaparHTML(p.fechaPago)}</td>
+                            <td>${escaparHTML(p.ano)} / ${escaparHTML(p.mes)}</td>
                             <td class="fw-bold text-success">$ ${totalConsignadoNum.toLocaleString()}</td>
-                            <td class="fw-bold text-primary">$ ${netoPropNum.toLocaleString()} <span class="badge ${badgeLiq} ms-1" style="font-size:0.65rem;">${(p.tipoLiquidacion || 'mensual').replace('_', ' ').toUpperCase()}</span></td>
-                            <td>${p.fechaProp || '<span class="text-muted">Pendiente</span>'}</td>
-                            <td><span class="badge ${badgePropClass}">${p.estadoProp || 'CONFIRMADO'}</span></td>
+                            <td class="fw-bold text-primary">$ ${netoPropNum.toLocaleString()} <span class="badge ${badgeLiq} ms-1" style="font-size:0.65rem;">${escaparHTML((p.tipoLiquidacion || 'mensual').replace('_', ' ').toUpperCase())}</span></td>
+                            <td>${p.fechaProp ? escaparHTML(p.fechaProp) : '<span class="text-muted">Pendiente</span>'}</td>
+                            <td><span class="badge ${badgePropClass}">${escaparHTML(p.estadoProp || 'CONFIRMADO')}</span></td>
                             <td class="text-center">
-                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditarPago(${p.id})" title="Editar Recibo"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-outline-primary btn-action" onclick="imprimirComprobante(${p.id})" title="Imprimir Comprobante Propietario"><i class="fas fa-print"></i></button>
-                                <button class="btn btn-outline-danger btn-action" onclick="eliminarPago(${p.id})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                <button class="btn btn-outline-warning btn-action" onclick="abrirModalEditarPago(${Number(p.id)})" title="Editar Recibo"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-primary btn-action" onclick="imprimirComprobante(${Number(p.id)})" title="Imprimir Comprobante Propietario"><i class="fas fa-print"></i></button>
+                                <button class="btn btn-outline-danger btn-action" onclick="eliminarPago(${Number(p.id)})" title="Eliminar"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
                     `;
@@ -1358,12 +1378,12 @@
                     let badgeProp = (p.estadoProp === 'PENDIENTE') ? 'badge-status-pending' : 'badge-status-active';
                     filasHistorial += `
                         <tr>
-                            <td>${p.ano} / ${p.mes}</td>
-                            <td>${p.fechaPago || '-'}</td>
-                            <td><span class="badge ${badgeArr}">${p.estadoArr || 'CONFIRMADO'}</span></td>
+                            <td>${escaparHTML(p.ano)} / ${escaparHTML(p.mes)}</td>
+                            <td>${p.fechaPago ? escaparHTML(p.fechaPago) : '-'}</td>
+                            <td><span class="badge ${badgeArr}">${escaparHTML(p.estadoArr || 'CONFIRMADO')}</span></td>
                             <td class="text-end fw-bold text-success">$ ${(Number(p.totalConsignado) || 0).toLocaleString()}</td>
                             <td class="text-end fw-bold text-primary">$ ${(Number(p.netoPropietario) || 0).toLocaleString()}</td>
-                            <td><span class="badge ${badgeProp}">${p.estadoProp || 'CONFIRMADO'}</span></td>
+                            <td><span class="badge ${badgeProp}">${escaparHTML(p.estadoProp || 'CONFIRMADO')}</span></td>
                         </tr>
                     `;
                 });
@@ -1384,13 +1404,13 @@
                 historialRenovaciones.forEach(r => {
                     filasRenovaciones += `
                         <tr>
-                            <td>${r.fechaRenovacion || '-'}</td>
+                            <td>${r.fechaRenovacion ? escaparHTML(r.fechaRenovacion) : '-'}</td>
                             <td class="text-end">$ ${(Number(r.canonAnterior) || 0).toLocaleString()}</td>
                             <td class="text-end fw-bold text-success">$ ${(Number(r.canonNuevo) || 0).toLocaleString()}</td>
-                            <td>${r.nuevaFechaVto || '-'}</td>
-                            <td>${r.observaciones || '-'}</td>
+                            <td>${r.nuevaFechaVto ? escaparHTML(r.nuevaFechaVto) : '-'}</td>
+                            <td>${r.observaciones ? escaparHTML(r.observaciones) : '-'}</td>
                             <td class="text-center">
-                                <button class="btn btn-outline-danger btn-action" onclick="eliminarRenovacion(${r.id})" title="Eliminar registro"><i class="fas fa-trash"></i></button>
+                                <button class="btn btn-outline-danger btn-action" onclick="eliminarRenovacion(${Number(r.id)})" title="Eliminar registro"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
                     `;
@@ -1421,13 +1441,13 @@
                     let badgeEstado = c.estado === 'Activo' ? 'badge-status-active' : 'badge-status-inactive';
                     filasRelacionados += `
                         <tr>
-                            <td><strong>#${c.contrato}</strong></td>
-                            <td><span class="badge bg-light text-dark border">${relacion}</span></td>
-                            <td>${sucursalMostrar}</td>
-                            <td>${c.direccion || '-'}</td>
-                            <td><span class="badge ${badgeEstado}">${c.estado}</span></td>
+                            <td><strong>#${escaparHTML(c.contrato)}</strong></td>
+                            <td><span class="badge bg-light text-dark border">${escaparHTML(relacion)}</span></td>
+                            <td>${escaparHTML(sucursalMostrar)}</td>
+                            <td>${c.direccion ? escaparHTML(c.direccion) : '-'}</td>
+                            <td><span class="badge ${badgeEstado}">${escaparHTML(c.estado)}</span></td>
                             <td class="text-center">
-                                <button class="btn btn-outline-info btn-action" onclick="abrirModalDetalle(${c.id})" title="Ver este contrato"><i class="fas fa-eye"></i></button>
+                                <button class="btn btn-outline-info btn-action" onclick="abrirModalDetalle(${Number(c.id)})" title="Ver este contrato"><i class="fas fa-eye"></i></button>
                             </td>
                         </tr>
                     `;
@@ -1653,11 +1673,11 @@
             let contratoDelPago = datosBase.find(c => c.contrato === p.contrato);
             let sucursalPago = contratoDelPago ? (contratoDelPago.sucursal || '') : '';
             let descPropHtml = p.valorDescProp > 0
-                ? `<tr><td>Descuento Propietario (${p.conceptoDescProp || 'Concepto Varios'})</td><td class="text-end text-danger">- $ ${(Number(p.valorDescProp)||0).toLocaleString()}</td></tr>`
+                ? `<tr><td>Descuento Propietario (${escaparHTML(p.conceptoDescProp || 'Concepto Varios')})</td><td class="text-end text-danger">- $ ${(Number(p.valorDescProp)||0).toLocaleString()}</td></tr>`
                 : '';
 
             let descArrHtml = p.descuento > 0
-                ? `<tr><td>Descuento Arrendatario (${p.conceptoDescArr || 'Descuento Aplicado'})</td><td class="text-end text-danger">- $ ${(Number(p.descuento)||0).toLocaleString()}</td></tr>`
+                ? `<tr><td>Descuento Arrendatario (${escaparHTML(p.conceptoDescArr || 'Descuento Aplicado')})</td><td class="text-end text-danger">- $ ${(Number(p.descuento)||0).toLocaleString()}</td></tr>`
                 : '';
 
             let w = window.open('', '_blank', 'width=780,height=720');
@@ -1680,21 +1700,21 @@
                     </div>
                     <div class="header-line"></div>
                     <div class="row g-2 mb-4 bg-light p-3 rounded-3" style="border: 1px solid #E2E8F0;">
-                        <div class="col-6"><strong>Propietario Inmueble:</strong> ${p.propietario || 'N/A'}</div>
-                        <div class="col-6"><strong>Cédula / NIT Prop.:</strong> ${p.cedulaProp || 'N/A'}</div>
-                        <div class="col-6"><strong>Consignar a (Beneficiario):</strong> ${p.titularConsignar || p.propietario || 'N/A'}</div>
-                        <div class="col-6"><strong>Cédula / NIT Titular:</strong> ${p.cedulaTitular || p.cedulaProp || 'N/A'}</div>
-                        <div class="col-6"><strong>Banco Destino:</strong> ${p.bancoProp || 'No especificado'}</div>
-                        <div class="col-6"><strong>Número de Cuenta:</strong> ${p.cuentaProp || 'No especificada'}</div>
-                        <div class="col-6"><strong>Contrato:</strong> #${p.contrato}</div>
-                        <div class="col-6"><strong>Arrendatario:</strong> ${p.arrendatario}</div>
-                        <div class="col-6"><strong>Período:</strong> ${p.ano} / ${p.mes} (${(p.tipoLiquidacion || 'mensual').replace('_', ' ').toUpperCase()})</div>
-                        <div class="col-6"><strong>Inmueble:</strong> ${p.direccion || 'N/A'}</div>
-                        ${sucursalPago ? `<div class="col-6"><strong>Sucursal:</strong> ${sucursalPago}</div>` : ''}
-                        <div class="col-6"><strong>Número de Factura:</strong> ${p.numeroFactura || 'N/A'}</div>
-                        <div class="col-6"><strong>Fecha de Factura:</strong> ${p.fechaFactura || 'N/A'}</div>
-                        <div class="col-6"><strong>No. Recibo de Caja:</strong> ${p.numeroReciboCaja || 'N/A'}</div>
-                        <div class="col-6"><strong>No. Comprobante de Egreso:</strong> ${p.numeroComprobanteEgreso || 'N/A'}</div>
+                        <div class="col-6"><strong>Propietario Inmueble:</strong> ${escaparHTML(p.propietario || 'N/A')}</div>
+                        <div class="col-6"><strong>Cédula / NIT Prop.:</strong> ${escaparHTML(p.cedulaProp || 'N/A')}</div>
+                        <div class="col-6"><strong>Consignar a (Beneficiario):</strong> ${escaparHTML(p.titularConsignar || p.propietario || 'N/A')}</div>
+                        <div class="col-6"><strong>Cédula / NIT Titular:</strong> ${escaparHTML(p.cedulaTitular || p.cedulaProp || 'N/A')}</div>
+                        <div class="col-6"><strong>Banco Destino:</strong> ${escaparHTML(p.bancoProp || 'No especificado')}</div>
+                        <div class="col-6"><strong>Número de Cuenta:</strong> ${escaparHTML(p.cuentaProp || 'No especificada')}</div>
+                        <div class="col-6"><strong>Contrato:</strong> #${escaparHTML(p.contrato)}</div>
+                        <div class="col-6"><strong>Arrendatario:</strong> ${escaparHTML(p.arrendatario)}</div>
+                        <div class="col-6"><strong>Período:</strong> ${escaparHTML(p.ano)} / ${escaparHTML(p.mes)} (${escaparHTML((p.tipoLiquidacion || 'mensual').replace('_', ' ').toUpperCase())})</div>
+                        <div class="col-6"><strong>Inmueble:</strong> ${escaparHTML(p.direccion || 'N/A')}</div>
+                        ${sucursalPago ? `<div class="col-6"><strong>Sucursal:</strong> ${escaparHTML(sucursalPago)}</div>` : ''}
+                        <div class="col-6"><strong>Número de Factura:</strong> ${escaparHTML(p.numeroFactura || 'N/A')}</div>
+                        <div class="col-6"><strong>Fecha de Factura:</strong> ${escaparHTML(p.fechaFactura || 'N/A')}</div>
+                        <div class="col-6"><strong>No. Recibo de Caja:</strong> ${escaparHTML(p.numeroReciboCaja || 'N/A')}</div>
+                        <div class="col-6"><strong>No. Comprobante de Egreso:</strong> ${escaparHTML(p.numeroComprobanteEgreso || 'N/A')}</div>
                     </div>
                     <table class="table table-bordered table-sm mb-4">
                         <thead class="table-light">
@@ -1713,10 +1733,10 @@
                         </tbody>
                     </table>
                     <div class="small mb-4">
-                        <p class="mb-1"><strong>Medio / Estado Recibo Arr.:</strong> ${p.formaPago || 'AV VILLAS'} (${p.estadoArr || 'CONFIRMADO'})</p>
-                        <p class="mb-1"><strong>Fecha Pago Propietario:</strong> ${p.fechaProp || 'Pendiente'}</p>
-                        <p class="mb-1"><strong>Medio / Estado Pago Prop.:</strong> ${p.formaProp || 'AV VILLAS'} (${p.estadoProp || 'CONFIRMADO'})</p>
-                        <p class="mb-1"><strong>Observaciones:</strong> ${p.observaciones || 'Ninguna'}</p>
+                        <p class="mb-1"><strong>Medio / Estado Recibo Arr.:</strong> ${escaparHTML(p.formaPago || 'AV VILLAS')} (${escaparHTML(p.estadoArr || 'CONFIRMADO')})</p>
+                        <p class="mb-1"><strong>Fecha Pago Propietario:</strong> ${escaparHTML(p.fechaProp || 'Pendiente')}</p>
+                        <p class="mb-1"><strong>Medio / Estado Pago Prop.:</strong> ${escaparHTML(p.formaProp || 'AV VILLAS')} (${escaparHTML(p.estadoProp || 'CONFIRMADO')})</p>
+                        <p class="mb-1"><strong>Observaciones:</strong> ${escaparHTML(p.observaciones || 'Ninguna')}</p>
                     </div>
                     <div class="text-center mt-5 pt-4">
                         <p class="mb-0 border-top d-inline-block px-5 pt-2 fw-bold">Firma Autorizada / Sello Grupo Empresarial BRW</p>

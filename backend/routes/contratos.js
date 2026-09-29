@@ -119,6 +119,11 @@ router.post('/completar', verificarToken, async (req, res) => {
 });
 
 router.put('/:id', verificarToken, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: 'ID de contrato inválido.' });
+    }
+
     const datos = req.body || {};
     if (!datos.contrato || !datos.arrendatario || !datos.direccion) {
         return res.status(400).json({ error: 'Complete los campos obligatorios (No. Contrato, Arrendatario, Dirección).' });
@@ -130,7 +135,7 @@ router.put('/:id', verificarToken, async (req, res) => {
     try {
         const resultado = await pool.query(
             `UPDATE contratos SET ${asignaciones}, "actualizadoEn" = now() WHERE id = $${CAMPOS_CONTRATO.length + 1} RETURNING *`,
-            [...valores, req.params.id]
+            [...valores, id]
         );
         if (resultado.rows.length === 0) {
             return res.status(404).json({ error: 'Contrato no encontrado.' });
@@ -146,8 +151,13 @@ router.put('/:id', verificarToken, async (req, res) => {
 });
 
 router.delete('/:id', verificarToken, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: 'ID de contrato inválido.' });
+    }
+
     try {
-        const resultado = await pool.query('DELETE FROM contratos WHERE id = $1 RETURNING id', [req.params.id]);
+        const resultado = await pool.query('DELETE FROM contratos WHERE id = $1 RETURNING id', [id]);
         if (resultado.rows.length === 0) {
             return res.status(404).json({ error: 'Contrato no encontrado.' });
         }

@@ -17,8 +17,11 @@ const rutasImportar = require('./routes/importar');
 const rutasSync = require('./routes/sync');
 const rutasRenovaciones = require('./routes/renovaciones');
 
+const helmet = require('helmet');
 const app = express();
 const PUERTO = process.env.PORT || 3000;
+
+app.use(helmet());
 
 // Orígenes permitidos (separados por coma en la variable de entorno). Por
 // defecto, el sitio de GitHub Pages de la app.
@@ -58,6 +61,9 @@ app.use('/api/renovaciones', rutasRenovaciones);
 
 // Manejador de errores genérico (por ejemplo, el error de CORS de arriba).
 app.use((err, req, res, next) => {
+    if (err.message === 'Origen no permitido por CORS') {
+        return res.status(403).json({ error: 'Acceso no permitido por política CORS.' });
+    }
     console.error('Error no controlado:', err.message);
     res.status(500).json({ error: 'Ocurrió un error inesperado en el servidor.' });
 });

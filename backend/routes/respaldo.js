@@ -46,6 +46,10 @@ router.post('/restaurar', verificarToken, async (req, res) => {
         return res.status(400).json({ error: 'El archivo no tiene la estructura de un respaldo válido de este sistema.' });
     }
 
+    if (contratos.length === 0 && pagos.length === 0) {
+        return res.status(400).json({ error: 'El archivo de respaldo no contiene contratos ni recibos. Por seguridad no se borraron los datos existentes.' });
+    }
+
     const cliente = await pool.connect();
     try {
         await cliente.query('BEGIN');

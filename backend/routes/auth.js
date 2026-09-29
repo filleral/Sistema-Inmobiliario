@@ -6,11 +6,20 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
 const { verificarToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/login', (req, res) => {
+const limiterLogin = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 10, // Máximo 10 intentos por IP en esa ventana
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiados intentos de acceso fallidos. Por favor espere 15 minutos e intente de nuevo.' },
+});
+
+router.post('/login', limiterLogin, async (req, res) => {
     const { usuario, clave } = req.body || {};
 
     if (!usuario || !clave) {
@@ -26,7 +35,7 @@ router.post('/login', (req, res) => {
     }
 
     const usuarioCoincide = usuario === usuarioValido;
-    const claveCoincide = bcrypt.compareSync(clave, hashValido);
+    const claveCoincide = usuarioCoincide ? await bcrypt.compare(clave, hashValido) : false;
 
     if (!usuarioCoincide || !claveCoincide) {
         return res.status(401).json({ error: 'Usuario o clave incorrectos.' });

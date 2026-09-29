@@ -59,10 +59,12 @@ router.post('/', verificarToken, async (req, res) => {
             asignaciones.push(`canon = $${i++}`); valoresContrato.push(formatearMoneda(rawCanon));
         }
         if (datos.nuevaFechaVto) {
-            asignaciones.push(`"fechaVto" = $${i++}`); valoresContrato.push(datos.nuevaFechaVto);
             const fechaAviso = new Date(datos.nuevaFechaVto);
-            fechaAviso.setDate(fechaAviso.getDate() - 90);
-            asignaciones.push(`"fechaAviso" = $${i++}`); valoresContrato.push(fechaAviso.toISOString().slice(0, 10));
+            if (!isNaN(fechaAviso.getTime())) {
+                asignaciones.push(`"fechaVto" = $${i++}`); valoresContrato.push(datos.nuevaFechaVto);
+                fechaAviso.setDate(fechaAviso.getDate() - 90);
+                asignaciones.push(`"fechaAviso" = $${i++}`); valoresContrato.push(fechaAviso.toISOString().slice(0, 10));
+            }
         }
         if (asignaciones.length > 0) {
             valoresContrato.push(datos.contrato);
@@ -84,8 +86,13 @@ router.post('/', verificarToken, async (req, res) => {
 });
 
 router.delete('/:id', verificarToken, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: 'ID de renovación inválido.' });
+    }
+
     try {
-        const resultado = await pool.query('DELETE FROM renovaciones WHERE id = $1 RETURNING id', [req.params.id]);
+        const resultado = await pool.query('DELETE FROM renovaciones WHERE id = $1 RETURNING id', [id]);
         if (resultado.rows.length === 0) {
             return res.status(404).json({ error: 'Renovación no encontrada.' });
         }
