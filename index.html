@@ -141,6 +141,11 @@
                     <i class="fas fa-receipt me-2"></i>Recibos de Caja y Consignaciones
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="control-tab" data-bs-toggle="pill" data-bs-target="#controlContent" type="button" role="tab">
+                    <i class="fas fa-calendar-check me-2"></i>Control de Pagos <span class="badge bg-danger ms-1 d-none" id="badgeVencidos"></span>
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content" id="sistemaTabsContent">
@@ -364,6 +369,104 @@
                     </div>
                 </div>
             </div>
+
+            <!-- CONTROL DE PAGOS: cartera del mes (fecha límite) + pagos pendientes a propietarios -->
+            <div class="tab-pane fade" id="controlContent" role="tabpanel">
+                <div class="filter-panel">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Mes:</label>
+                            <select id="controlMes" class="form-select">
+                                <option value="Enero">Enero</option><option value="Febrero">Febrero</option><option value="Marzo">Marzo</option>
+                                <option value="Abril">Abril</option><option value="Mayo">Mayo</option><option value="Junio">Junio</option>
+                                <option value="Julio">Julio</option><option value="Agosto">Agosto</option><option value="Septiembre">Septiembre</option>
+                                <option value="Octubre">Octubre</option><option value="Noviembre">Noviembre</option><option value="Diciembre">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Año:</label>
+                            <input type="number" id="controlAno" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Mostrar:</label>
+                            <select id="controlFiltroEstado" class="form-select">
+                                <option value="">-- Todos --</option>
+                                <option value="VENCIDO">Vencidos (sin pago)</option>
+                                <option value="PARCIAL">Pago parcial</option>
+                                <option value="POR_VENCER">Por vencer (próximos 5 días)</option>
+                                <option value="PENDIENTE">Pendientes (aún en plazo)</option>
+                                <option value="AL_DIA">Al día</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Buscar:</label>
+                            <input type="text" id="controlBuscar" class="form-control" placeholder="Contrato, arrendatario, cédula...">
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-outline-secondary w-100" id="btnControlMesActual" title="Volver al mes actual"><i class="fas fa-calendar-day"></i></button>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12" id="resumenControlCartera"></div>
+                    </div>
+                </div>
+
+                <div class="card-custom mb-4">
+                    <div class="card-body p-0">
+                        <div class="px-3 pt-3">
+                            <h6 class="fw-bold mb-1" style="color: var(--brand-navy);"><i class="fas fa-calendar-check me-2"></i>Cartera del Mes — Fecha Límite de Pago</h6>
+                            <p class="small text-muted mb-2">Contratos activos con pago mensual. Un contrato está <strong>vencido</strong> si pasó su día límite y no tiene recibo CONFIRMADO en el período.</p>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle table-custom w-100 mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Contrato</th>
+                                        <th>Arrendatario</th>
+                                        <th>Celular</th>
+                                        <th>Fecha Límite</th>
+                                        <th>Estado</th>
+                                        <th>Canon</th>
+                                        <th>Consignado</th>
+                                        <th>Saldo</th>
+                                        <th>Detalle</th>
+                                        <th class="text-center">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cuerpoTablaControlCartera"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-custom">
+                    <div class="card-body p-0">
+                        <div class="px-3 pt-3">
+                            <h6 class="fw-bold mb-1" style="color: var(--brand-navy);"><i class="fas fa-money-check-dollar me-2"></i>Pagos Pendientes a Propietarios (Comprobantes de Egreso)</h6>
+                            <p class="small text-muted mb-2">Recibos ya cobrados al arrendatario (CONFIRMADO) cuya consignación al propietario sigue PENDIENTE. Todos los períodos.</p>
+                            <div id="resumenPendientesPropietarios" class="mb-2"></div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle table-custom w-100 mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Propietario / Titular</th>
+                                        <th>Contrato</th>
+                                        <th>Arrendatario</th>
+                                        <th>Período</th>
+                                        <th>No. Recibo Caja</th>
+                                        <th>Fecha Recibo</th>
+                                        <th>Banco / Cuenta</th>
+                                        <th>Neto a Pagar</th>
+                                        <th class="text-center">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cuerpoTablaPendientesProp"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -456,8 +559,9 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">Valor Canon Base ($)</label>
-                                <input type="text" class="form-control" id="pagoCanon" oninput="formatearEntradaMoneda(this); calcularLiquidacionPropietario();">
+                                <label class="form-label">Valor Canon Base ($) <i class="fas fa-lock text-muted small" title="Se toma del contrato. Solo cambia con una Renovación."></i></label>
+                                <input type="text" class="form-control bg-light fw-bold" id="pagoCanon" readonly title="Se toma del contrato. Para cambiarlo use Registrar Renovación en Gestión de Contratos.">
+                                <div class="form-text small" id="ayudaPagoCanon">Se toma del contrato.</div>
                             </div>
                             <!-- MOTIVO Y VALOR DE DESCUENTO ARRENDATARIO (SIN CONCEPTO ADICIONAL) -->
                             <div class="col-md-3">
@@ -469,8 +573,31 @@
                                 <input type="text" class="form-control" id="pagoDescuento" value="0" oninput="formatearEntradaMoneda(this); calcularLiquidacionPropietario();">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label text-success">Total Recaudado ($)</label>
-                                <input type="text" class="form-control fw-bold text-success bg-light" id="pagoTotalConsignado" readonly>
+                                <label class="form-label text-success">Total a Recaudar ($)</label>
+                                <input type="text" class="form-control fw-bold text-success bg-light" id="pagoTotalConsignado" readonly title="Valor esperado: canon menos descuento">
+                            </div>
+                            <!-- VALOR REALMENTE CONSIGNADO Y DIFERENCIA CONTRA LO ESPERADO -->
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold" style="color: var(--brand-navy);">Valor Consignado Real ($)</label>
+                                <input type="text" class="form-control fw-bold" id="pagoValorConsignado" placeholder="Lo que consignó el arrendatario" oninput="formatearEntradaMoneda(this); actualizarDiferenciaConsignado();">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Diferencia ($)</label>
+                                <input type="text" class="form-control fw-bold bg-light" id="pagoDiferencia" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" id="labelMotivoDiferencia">Motivo de la Diferencia</label>
+                                <input type="text" class="form-control" id="pagoMotivoDiferencia" list="listaMotivosDiferencia" placeholder="Solo si el valor consignado es mayor o menor al esperado">
+                                <datalist id="listaMotivosDiferencia">
+                                    <option value="Pago parcial / abono"></option>
+                                    <option value="Pagó de más (saldo a favor)"></option>
+                                    <option value="Incluye intereses de mora"></option>
+                                    <option value="Incluye pago de servicios / administración"></option>
+                                    <option value="Pago de saldo de mes anterior"></option>
+                                </datalist>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="small" id="avisoFechaLimitePago"></div>
                             </div>
                         </div>
 
@@ -554,9 +681,9 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Estado Consignación Propietario</label>
-                                <select class="form-select fw-bold" id="pagoEstadoProp">
-                                    <option value="CONFIRMADO">CONFIRMADO</option>
+                                <select class="form-select fw-bold" id="pagoEstadoProp" title="Pasa a CONFIRMADO al diligenciar el No. de Comprobante de Egreso">
                                     <option value="PENDIENTE">PENDIENTE</option>
+                                    <option value="CONFIRMADO">CONFIRMADO</option>
                                 </select>
                             </div>
                             <div class="col-md-12">
@@ -778,7 +905,11 @@
                             </div>
                             <div class="col-md-3"><label class="form-label">Estado</label><select class="form-select" id="valEstado"><option value="Activo">Activo</option><option value="Retirado">Retirado</option></select></div>
                             <div class="col-md-6"><label class="form-label">Dirección Inmueble</label><input type="text" class="form-control" id="valDireccion" required></div>
-                            <div class="col-md-6"><label class="form-label">Canon ($)</label><input type="text" class="form-control" id="valCanonNumerico" required oninput="formatearEntradaMoneda(this)"></div>
+                            <div class="col-md-6">
+                                <label class="form-label">Canon ($) <i class="fas fa-lock text-muted small d-none" id="iconoCanonBloqueado"></i></label>
+                                <input type="text" class="form-control" id="valCanonNumerico" required oninput="formatearEntradaMoneda(this)">
+                                <div class="form-text small d-none" id="ayudaCanonContrato">El canon no se puede modificar aquí. Para cambiarlo use <strong>Registrar Renovación</strong> (queda en el historial).</div>
+                            </div>
                             <div class="col-md-4"><label class="form-label">Día Límite</label><input type="number" class="form-control" id="valDiaLimite" value="5" min="1" max="31"></div>
                             <div class="col-md-4"><label class="form-label">Fecha Inicial</label><input type="date" class="form-control" id="valFechaIni" onchange="calcularVencimientoDinamico()"></div>
                             <div class="col-md-4"><label class="form-label">Fecha Vencimiento</label><input type="date" class="form-control bg-light" id="valFechaVto" readonly></div>

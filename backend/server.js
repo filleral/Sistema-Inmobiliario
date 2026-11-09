@@ -68,6 +68,27 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Ocurrió un error inesperado en el servidor.' });
 });
 
-app.listen(PUERTO, () => {
-    console.log(`API de Bienes Raíces White escuchando en el puerto ${PUERTO}`);
+// Columnas agregadas después de la creación inicial de la base de datos.
+// Son "ADD COLUMN IF NOT EXISTS": se pueden correr en cada arranque sin
+// riesgo (no tocan los datos existentes) y así un despliegue nuevo nunca
+// queda esperando a que alguien corra el ALTER TABLE a mano en Neon.
+async function asegurarEsquema() {
+    const sentencias = [
+        'ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "valorConsignado" NUMERIC(14, 2)',
+        'ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "motivoDiferencia" TEXT DEFAULT \'\'',
+        'CREATE INDEX IF NOT EXISTS idx_pagos_numero_recibo ON pagos ("numeroReciboCaja")',
+    ];
+    for (const sql of sentencias) {
+        try {
+            await pool.query(sql);
+        } catch (err) {
+            console.error('No se pudo aplicar ajuste de esquema:', sql, '-', err.message);
+        }
+    }
+}
+
+asegurarEsquema().finally(() => {
+    app.listen(PUERTO, () => {
+        console.log(`API de Bienes Raíces White escuchando en el puerto ${PUERTO}`);
+    });
 });

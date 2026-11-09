@@ -124,15 +124,33 @@ router.put('/:id', verificarToken, async (req, res) => {
         return res.status(400).json({ error: 'ID de contrato inválido.' });
     }
 
-    const datos = req.body || {};
+    const datos = { ...(req.body || {}) };
     if (!datos.contrato || !datos.arrendatario || !datos.direccion) {
         return res.status(400).json({ error: 'Complete los campos obligatorios (No. Contrato, Arrendatario, Dirección).' });
     }
 
-    const valores = valoresContrato(datos);
-    const asignaciones = CAMPOS_CONTRATO.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
-
     try {
+        // El canon de un contrato que ya lo tiene NO se edita directamente:
+        // solo cambia con "Registrar Renovación" (que deja historial). Si el
+        // contrato aún no tiene canon ($0), sí se permite registrarlo.
+        const actualRes = await pool.query('SELECT canon, "rawCanon" FROM contratos WHERE id = $1', [id]);
+        const actual = actualRes.rows[0];
+        if (!actual) {
+            return res.status(404).json({ error: 'Contrato no encontrado.' });
+        }
+        const canonActual = Number(actual.rawCanon) || 0;
+        if (canonActual > 0) {
+            const canonEnviado = Number(datos.rawCanon);
+            if (datos.rawCanon !== undefined && Math.round(canonEnviado) !== Math.round(canonActual)) {
+                return res.status(400).json({ error: 'El canon no se puede modificar desde la edición del contrato. Para cambiarlo use "Registrar Renovación".' });
+            }
+            datos.rawCanon = canonActual;
+            datos.canon = actual.canon;
+        }
+
+        const valores = valoresContrato(datos);
+        const asignaciones = CAMPOS_CONTRATO.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
+
         const resultado = await pool.query(
             `UPDATE contratos SET ${asignaciones}, "actualizadoEn" = now() WHERE id = $${CAMPOS_CONTRATO.length + 1} RETURNING *`,
             [...valores, id]

@@ -81,6 +81,7 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
         pagosActualizados: 0,
         pagosAgregados: 0,
         filasOmitidas: 0,
+        recibosNumeroRepetidoOmitido: 0,
     };
 
     const cliente = await pool.connect();
@@ -212,6 +213,21 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
             );
 
             if (!existenteRes.rows[0] && !arrendatario) { resumen.filasOmitidas++; continue; } // arrendatario es NOT NULL al crear
+
+            // El No. de Recibo de Caja no se puede repetir entre recibos
+            // distintos (misma regla que routes/pagos.js). Si el Excel trae un
+            // número que ya tiene OTRO recibo, solo se omite ese número (el
+            // resto de la fila sí se sincroniza) en vez de tumbar la corrida.
+            if (camposDirectos.numeroReciboCaja) {
+                const duplicadoRes = await cliente.query(
+                    'SELECT id FROM pagos WHERE TRIM("numeroReciboCaja") = $1 AND id <> $2 LIMIT 1',
+                    [camposDirectos.numeroReciboCaja, existenteRes.rows[0]?.id || 0]
+                );
+                if (duplicadoRes.rows[0]) {
+                    delete camposDirectos.numeroReciboCaja;
+                    resumen.recibosNumeroRepetidoOmitido++;
+                }
+            }
 
             // fechaPago es obligatoria en la tabla; si el Excel todavía no
             // trae la fecha real de pago, se usa la de factura, o el 1 del

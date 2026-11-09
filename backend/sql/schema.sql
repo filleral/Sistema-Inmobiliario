@@ -82,7 +82,12 @@ CREATE TABLE IF NOT EXISTS pagos (
     canon NUMERIC(14, 2) DEFAULT 0,
     "conceptoDescArr" TEXT DEFAULT '',
     descuento NUMERIC(14, 2) DEFAULT 0,
-    "totalConsignado" NUMERIC(14, 2) DEFAULT 0,
+    "totalConsignado" NUMERIC(14, 2) DEFAULT 0,      -- valor ESPERADO del recibo (canon - descuento)
+    -- Lo que el arrendatario consignó de verdad. NULL = recibo antiguo en el
+    -- que no se registró (se asume igual al esperado). Si difiere del
+    -- esperado, "motivoDiferencia" explica por qué (pago parcial, abono...).
+    "valorConsignado" NUMERIC(14, 2),
+    "motivoDiferencia" TEXT DEFAULT '',
     "tipoLiquidacion" TEXT DEFAULT 'mensual',
     comision NUMERIC(14, 2) DEFAULT 0,
     "valor4x1000" NUMERIC(14, 2) DEFAULT 0,
@@ -100,6 +105,16 @@ CREATE TABLE IF NOT EXISTS pagos (
 CREATE INDEX IF NOT EXISTS idx_pagos_contrato ON pagos (contrato);
 CREATE INDEX IF NOT EXISTS idx_pagos_mes_ano ON pagos (mes, ano);
 CREATE INDEX IF NOT EXISTS idx_pagos_arrendatario ON pagos (arrendatario);
+-- Búsqueda rápida del No. de Recibo de Caja para impedir que se repita.
+-- (No es UNIQUE a propósito: el histórico/Excel puede traer repetidos y una
+-- restricción física tumbaría la sincronización completa. La unicidad la
+-- garantiza el backend en routes/pagos.js y routes/sync.js.)
+CREATE INDEX IF NOT EXISTS idx_pagos_numero_recibo ON pagos ("numeroReciboCaja");
+
+-- Columnas agregadas después de la creación inicial: para bases de datos ya
+-- existentes (el backend también las aplica solo al arrancar, ver server.js).
+ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "valorConsignado" NUMERIC(14, 2);
+ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "motivoDiferencia" TEXT DEFAULT '';
 
 -- Historial de renovaciones: un registro permanente por cada vez que un
 -- contrato se renueva (antes solo se guardaba un dato suelto de "próxima
