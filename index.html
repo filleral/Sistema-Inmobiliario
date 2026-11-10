@@ -370,99 +370,167 @@
                 </div>
             </div>
 
-            <!-- CONTROL DE PAGOS: cartera del mes (fecha límite) + pagos pendientes a propietarios -->
+            <!-- CONTROL DE PAGOS: dos consultas separadas
+                 (1) ¿Quién me debe? -> cartera de arrendatarios por fecha límite
+                 (2) ¿A qué propietario ya le pagué? -> pagos realizados y pendientes a propietarios -->
             <div class="tab-pane fade" id="controlContent" role="tabpanel">
-                <div class="filter-panel">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-3">
-                            <label class="form-label">Mes:</label>
-                            <select id="controlMes" class="form-select">
-                                <option value="Enero">Enero</option><option value="Febrero">Febrero</option><option value="Marzo">Marzo</option>
-                                <option value="Abril">Abril</option><option value="Mayo">Mayo</option><option value="Junio">Junio</option>
-                                <option value="Julio">Julio</option><option value="Agosto">Agosto</option><option value="Septiembre">Septiembre</option>
-                                <option value="Octubre">Octubre</option><option value="Noviembre">Noviembre</option><option value="Diciembre">Diciembre</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Año:</label>
-                            <input type="number" id="controlAno" class="form-control">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Mostrar:</label>
-                            <select id="controlFiltroEstado" class="form-select">
-                                <option value="">-- Todos --</option>
-                                <option value="VENCIDO">Vencidos (sin pago)</option>
-                                <option value="PARCIAL">Pago parcial</option>
-                                <option value="POR_VENCER">Por vencer (próximos 5 días)</option>
-                                <option value="PENDIENTE">Pendientes (aún en plazo)</option>
-                                <option value="AL_DIA">Al día</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Buscar:</label>
-                            <input type="text" id="controlBuscar" class="form-control" placeholder="Contrato, arrendatario, cédula...">
-                        </div>
-                        <div class="col-md-1">
-                            <button class="btn btn-outline-secondary w-100" id="btnControlMesActual" title="Volver al mes actual"><i class="fas fa-calendar-day"></i></button>
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-12" id="resumenControlCartera"></div>
-                    </div>
-                </div>
+                <ul class="nav nav-tabs mb-3" id="controlSubTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold" id="sub-cartera-tab" data-bs-toggle="tab" data-bs-target="#subCartera" type="button" role="tab">
+                            <i class="fas fa-user-clock me-1"></i> Cobros a Arrendatarios
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold" id="sub-propietarios-tab" data-bs-toggle="tab" data-bs-target="#subPropietarios" type="button" role="tab">
+                            <i class="fas fa-money-check-dollar me-1"></i> Pagos a Propietarios
+                        </button>
+                    </li>
+                </ul>
 
-                <div class="card-custom mb-4">
-                    <div class="card-body p-0">
-                        <div class="px-3 pt-3">
-                            <h6 class="fw-bold mb-1" style="color: var(--brand-navy);"><i class="fas fa-calendar-check me-2"></i>Cartera del Mes — Fecha Límite de Pago</h6>
-                            <p class="small text-muted mb-2">Contratos activos con pago mensual. Un contrato está <strong>vencido</strong> si pasó su día límite y no tiene recibo CONFIRMADO en el período.</p>
+                <div class="tab-content">
+                    <!-- (1) COBROS A ARRENDATARIOS -->
+                    <div class="tab-pane fade show active" id="subCartera" role="tabpanel">
+                        <div class="alert alert-light border small mb-3">
+                            <i class="fas fa-circle-info me-1 text-primary"></i>
+                            <strong>¿Para qué sirve?</strong> Muestra, para el mes elegido, qué arrendatarios ya pagaron y cuáles no, según el <strong>día límite</strong> de cada contrato.
+                            <span class="badge bg-danger">Vencido</span> = pasó el día límite y no hay recibo ·
+                            <span class="badge bg-warning text-dark">Pago parcial</span> = consignó menos del canon ·
+                            <span class="badge bg-info text-dark">Por vencer</span> = vence en los próximos 5 días ·
+                            <span class="badge bg-light text-dark border">En plazo</span> = aún no llega su día límite ·
+                            <span class="badge badge-status-active">Al día</span> = ya pagó.
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle table-custom w-100 mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Contrato</th>
-                                        <th>Arrendatario</th>
-                                        <th>Celular</th>
-                                        <th>Fecha Límite</th>
-                                        <th>Estado</th>
-                                        <th>Canon</th>
-                                        <th>Consignado</th>
-                                        <th>Saldo</th>
-                                        <th>Detalle</th>
-                                        <th class="text-center">Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="cuerpoTablaControlCartera"></tbody>
-                            </table>
+                        <div class="filter-panel">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label">Mes:</label>
+                                    <select id="controlMes" class="form-select">
+                                        <option value="Enero">Enero</option><option value="Febrero">Febrero</option><option value="Marzo">Marzo</option>
+                                        <option value="Abril">Abril</option><option value="Mayo">Mayo</option><option value="Junio">Junio</option>
+                                        <option value="Julio">Julio</option><option value="Agosto">Agosto</option><option value="Septiembre">Septiembre</option>
+                                        <option value="Octubre">Octubre</option><option value="Noviembre">Noviembre</option><option value="Diciembre">Diciembre</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Año:</label>
+                                    <input type="number" id="controlAno" class="form-control">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Mostrar:</label>
+                                    <select id="controlFiltroEstado" class="form-select">
+                                        <option value="">-- Todos --</option>
+                                        <option value="VENCIDO">Vencidos (sin pago)</option>
+                                        <option value="PARCIAL">Pago parcial</option>
+                                        <option value="POR_VENCER">Por vencer (próximos 5 días)</option>
+                                        <option value="PENDIENTE">En plazo</option>
+                                        <option value="AL_DIA">Al día</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Buscar:</label>
+                                    <input type="text" id="controlBuscar" class="form-control" placeholder="Contrato, arrendatario, cédula...">
+                                </div>
+                                <div class="col-md-1">
+                                    <button class="btn btn-outline-secondary w-100" id="btnControlMesActual" title="Volver al mes actual"><i class="fas fa-calendar-day"></i></button>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12" id="resumenControlCartera"></div>
+                            </div>
+                        </div>
+
+                        <div class="card-custom">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle table-custom w-100 mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Contrato</th>
+                                                <th>Arrendatario</th>
+                                                <th>Celular</th>
+                                                <th>Fecha Límite</th>
+                                                <th>Estado</th>
+                                                <th>Canon</th>
+                                                <th>Consignado</th>
+                                                <th>Saldo</th>
+                                                <th>Detalle</th>
+                                                <th class="text-center">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cuerpoTablaControlCartera"></tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="card-custom">
-                    <div class="card-body p-0">
-                        <div class="px-3 pt-3">
-                            <h6 class="fw-bold mb-1" style="color: var(--brand-navy);"><i class="fas fa-money-check-dollar me-2"></i>Pagos Pendientes a Propietarios (Comprobantes de Egreso)</h6>
-                            <p class="small text-muted mb-2">Recibos ya cobrados al arrendatario (CONFIRMADO) cuya consignación al propietario sigue PENDIENTE. Todos los períodos.</p>
-                            <div id="resumenPendientesPropietarios" class="mb-2"></div>
+                    <!-- (2) PAGOS A PROPIETARIOS -->
+                    <div class="tab-pane fade" id="subPropietarios" role="tabpanel">
+                        <div class="alert alert-light border small mb-3">
+                            <i class="fas fa-circle-info me-1 text-primary"></i>
+                            <strong>¿Para qué sirve?</strong> Consulte lo que se le ha <strong>pagado</strong> (con su No. de Comprobante de Egreso) o lo que se le <strong>debe</strong> a cada propietario.
+                            Solo incluye recibos ya cobrados al arrendatario. Para registrar un pago al propietario use el botón <i class="fas fa-money-check-dollar"></i> y diligencie el No. de Comprobante de Egreso.
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle table-custom w-100 mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Propietario / Titular</th>
-                                        <th>Contrato</th>
-                                        <th>Arrendatario</th>
-                                        <th>Período</th>
-                                        <th>No. Recibo Caja</th>
-                                        <th>Fecha Recibo</th>
-                                        <th>Banco / Cuenta</th>
-                                        <th>Neto a Pagar</th>
-                                        <th class="text-center">Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="cuerpoTablaPendientesProp"></tbody>
-                            </table>
+                        <div class="filter-panel">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label">Propietario / Titular:</label>
+                                    <input type="text" id="propBuscar" class="form-control" list="listaPropietariosPagos" placeholder="Escriba el nombre o la cédula...">
+                                    <datalist id="listaPropietariosPagos"></datalist>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Estado:</label>
+                                    <select id="propEstado" class="form-select">
+                                        <option value="CONFIRMADO">Pagados</option>
+                                        <option value="PENDIENTE">Pendientes por pagar</option>
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Mes:</label>
+                                    <select id="propMes" class="form-select">
+                                        <option value="">-- Todos --</option>
+                                        <option value="Enero">Enero</option><option value="Febrero">Febrero</option><option value="Marzo">Marzo</option>
+                                        <option value="Abril">Abril</option><option value="Mayo">Mayo</option><option value="Junio">Junio</option>
+                                        <option value="Julio">Julio</option><option value="Agosto">Agosto</option><option value="Septiembre">Septiembre</option>
+                                        <option value="Octubre">Octubre</option><option value="Noviembre">Noviembre</option><option value="Diciembre">Diciembre</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Año:</label>
+                                    <input type="number" id="propAno" class="form-control" placeholder="Todos">
+                                </div>
+                                <div class="col-md-2 d-flex gap-2">
+                                    <button class="btn btn-outline-success w-100" onclick="exportarPagosPropietariosCSV()" title="Exportar esta consulta a Excel"><i class="fas fa-file-excel me-1"></i> CSV</button>
+                                    <button class="btn btn-outline-secondary" id="btnLimpiarPropietarios" title="Limpiar filtros"><i class="fas fa-rotate-left"></i></button>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12" id="resumenPagosPropietarios"></div>
+                            </div>
+                        </div>
+
+                        <div class="card-custom">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle table-custom w-100 mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Propietario / Titular</th>
+                                                <th>Contrato</th>
+                                                <th>Arrendatario</th>
+                                                <th>Período</th>
+                                                <th>Neto Propietario</th>
+                                                <th>Estado</th>
+                                                <th>Fecha Pago Prop.</th>
+                                                <th>No. Comprobante Egreso</th>
+                                                <th>Medio / Banco</th>
+                                                <th class="text-center">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cuerpoTablaPagosPropietarios"></tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -578,8 +646,9 @@
                             </div>
                             <!-- VALOR REALMENTE CONSIGNADO Y DIFERENCIA CONTRA LO ESPERADO -->
                             <div class="col-md-3">
-                                <label class="form-label fw-bold" style="color: var(--brand-navy);">Valor Consignado Real ($)</label>
-                                <input type="text" class="form-control fw-bold" id="pagoValorConsignado" placeholder="Lo que consignó el arrendatario" oninput="formatearEntradaMoneda(this); actualizarDiferenciaConsignado();">
+                                <label class="form-label fw-bold" style="color: var(--brand-navy);">Valor Consignado Real ($) <i class="fas fa-pen text-muted small"></i></label>
+                                <input type="text" class="form-control fw-bold border-primary" id="pagoValorConsignado" placeholder="Lo que consignó el arrendatario" oninput="formatearEntradaMoneda(this); actualizarDiferenciaConsignado();">
+                                <div class="form-text small">Si consignó <strong>de más o de menos</strong>, escriba aquí el valor exacto que consignó.</div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Diferencia ($)</label>
@@ -695,6 +764,7 @@
                 </div>
                 <div class="modal-footer bg-light border-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-primary" id="btnGuardarPagoYOtro" title="Guarda este recibo y deja el formulario limpio para registrar el siguiente"><i class="fas fa-plus me-1"></i> Guardar y registrar otro</button>
                     <button type="button" class="btn btn-luxury-primary" id="btnGuardarPago">Guardar Recibo y Comprobante</button>
                 </div>
             </div>
@@ -906,9 +976,9 @@
                             <div class="col-md-3"><label class="form-label">Estado</label><select class="form-select" id="valEstado"><option value="Activo">Activo</option><option value="Retirado">Retirado</option></select></div>
                             <div class="col-md-6"><label class="form-label">Dirección Inmueble</label><input type="text" class="form-control" id="valDireccion" required></div>
                             <div class="col-md-6">
-                                <label class="form-label">Canon ($) <i class="fas fa-lock text-muted small d-none" id="iconoCanonBloqueado"></i></label>
+                                <label class="form-label">Canon ($)</label>
                                 <input type="text" class="form-control" id="valCanonNumerico" required oninput="formatearEntradaMoneda(this)">
-                                <div class="form-text small d-none" id="ayudaCanonContrato">El canon no se puede modificar aquí. Para cambiarlo use <strong>Registrar Renovación</strong> (queda en el historial).</div>
+                                <div class="form-text small d-none" id="ayudaCanonContrato">Si cambia el canon (incremento), el cambio queda guardado en el historial de renovaciones del contrato.</div>
                             </div>
                             <div class="col-md-4"><label class="form-label">Día Límite</label><input type="number" class="form-control" id="valDiaLimite" value="5" min="1" max="31"></div>
                             <div class="col-md-4"><label class="form-label">Fecha Inicial</label><input type="date" class="form-control" id="valFechaIni" onchange="calcularVencimientoDinamico()"></div>

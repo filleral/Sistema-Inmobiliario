@@ -129,42 +129,49 @@ router.put('/:id', verificarToken, async (req, res) => {
         return res.status(400).json({ error: 'Complete los campos obligatorios (No. Contrato, Arrendatario, Dirección).' });
     }
 
+    const cliente = await pool.connect();
     try {
-        // El canon de un contrato que ya lo tiene NO se edita directamente:
-        // solo cambia con "Registrar Renovación" (que deja historial). Si el
-        // contrato aún no tiene canon ($0), sí se permite registrarlo.
-        const actualRes = await pool.query('SELECT canon, "rawCanon" FROM contratos WHERE id = $1', [id]);
+        await cliente.query('BEGIN');
+
+        const actualRes = await cliente.query('SELECT contrato, "rawCanon" FROM contratos WHERE id = $1 FOR UPDATE', [id]);
         const actual = actualRes.rows[0];
         if (!actual) {
+            await cliente.query('ROLLBACK');
             return res.status(404).json({ error: 'Contrato no encontrado.' });
-        }
-        const canonActual = Number(actual.rawCanon) || 0;
-        if (canonActual > 0) {
-            const canonEnviado = Number(datos.rawCanon);
-            if (datos.rawCanon !== undefined && Math.round(canonEnviado) !== Math.round(canonActual)) {
-                return res.status(400).json({ error: 'El canon no se puede modificar desde la edición del contrato. Para cambiarlo use "Registrar Renovación".' });
-            }
-            datos.rawCanon = canonActual;
-            datos.canon = actual.canon;
         }
 
         const valores = valoresContrato(datos);
         const asignaciones = CAMPOS_CONTRATO.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
-
-        const resultado = await pool.query(
+        const resultado = await cliente.query(
             `UPDATE contratos SET ${asignaciones}, "actualizadoEn" = now() WHERE id = $${CAMPOS_CONTRATO.length + 1} RETURNING *`,
             [...valores, id]
         );
-        if (resultado.rows.length === 0) {
-            return res.status(404).json({ error: 'Contrato no encontrado.' });
+
+        // El canon SÍ se puede cambiar desde el contrato (incrementos), pero
+        // cada cambio queda registrado en el historial de renovaciones con el
+        // canon anterior y el nuevo, para no perder la trazabilidad. Los
+        // recibos ya guardados conservan el canon con el que se hicieron.
+        const canonAnterior = Number(actual.rawCanon) || 0;
+        const canonNuevo = Number(resultado.rows[0].rawCanon) || 0;
+        if (canonAnterior > 0 && Math.round(canonAnterior) !== Math.round(canonNuevo)) {
+            await cliente.query(
+                `INSERT INTO renovaciones (contrato, "fechaRenovacion", "canonAnterior", "canonNuevo", observaciones)
+                 VALUES ($1, CURRENT_DATE, $2, $3, $4)`,
+                [resultado.rows[0].contrato, canonAnterior, canonNuevo, 'Cambio de canon desde la edición del contrato']
+            );
         }
+
+        await cliente.query('COMMIT');
         res.json(resultado.rows[0]);
     } catch (err) {
+        await cliente.query('ROLLBACK').catch(() => {});
         if (err.code === '23505') {
             return res.status(409).json({ error: `Ya existe otro contrato con el número ${datos.contrato}.` });
         }
         console.error('Error actualizando contrato:', err);
         res.status(500).json({ error: 'No se pudo actualizar el contrato.' });
+    } finally {
+        cliente.release();
     }
 });
 

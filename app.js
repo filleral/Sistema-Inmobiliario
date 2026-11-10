@@ -664,6 +664,11 @@
             return parseFloat(limpio) || 0;
         }
 
+        // true = el Valor Consignado Real se llena solo con el Total a Recaudar
+        // (recibo nuevo recién elegido). Pasa a false apenas el usuario lo edita
+        // o cuando se abre un recibo ya guardado.
+        let valorConsignadoAutomatico = false;
+
         function calcularLiquidacionPropietario() {
             let canon = obtenerValorLimpio($('#pagoCanon').val());
             let descuentoArr = obtenerValorLimpio($('#pagoDescuento').val());
@@ -671,6 +676,12 @@
             // Total Recaudado = lo que pagó el arrendatario menos su descuento (si aplica)
             let totalRecaudado = canon - descuentoArr;
             $('#pagoTotalConsignado').val(totalRecaudado >= 0 ? formatearMonedaInput(totalRecaudado) : "0");
+            // Mientras el usuario no lo haya tocado, el Valor Consignado Real sigue
+            // al Total a Recaudar (caso normal: pagó exacto). Si consignó de más o
+            // de menos, lo escribe encima y deja de sincronizarse.
+            if (valorConsignadoAutomatico) {
+                $('#pagoValorConsignado').val(totalRecaudado > 0 ? formatearMonedaInput(totalRecaudado) : '');
+            }
 
             let tipoLiq = $('#pagoTipoLiquidacion').val();
             // Comisión de administración: 10% del canon, solo en liquidaciones mensuales
@@ -939,6 +950,16 @@
             // día límite, estado...) y no solo cuando cambian los recibos.
             $('#control-tab').on('shown.bs.tab', renderizarControlPagos);
 
+            // Pagos a Propietarios: filtros de la consulta
+            $('#propBuscar').on('input', renderizarPagosPropietarios);
+            $('#propEstado, #propMes, #propAno').on('change', renderizarPagosPropietarios);
+            $('#propAno').on('keyup', renderizarPagosPropietarios);
+            $('#btnLimpiarPropietarios').on('click', function() {
+                $('#propBuscar, #propMes, #propAno').val('');
+                $('#propEstado').val('CONFIRMADO');
+                renderizarPagosPropietarios();
+            });
+
             $('#inputBusquedaCedula').on('input', function() {
                 let val = $(this).val().toLowerCase().trim();
                 let sugerenciasBox = $('#sugerenciasCedula');
@@ -992,6 +1013,7 @@
                 $('#pagoSucursalArr').val($(this).data('sucursalarr') || '');
                 $('#pagoDireccionInmueble').val($(this).data('direccion'));
                 ponerCanonDelContratoEnRecibo(Number($(this).data('canon')) || 0);
+                if (modoNuevoRecibo && !($('#pagoValorConsignado').val() || '').trim()) valorConsignadoAutomatico = true;
                 $('#sugerenciasCedula').hide();
                 calcularLiquidacionPropietario();
                 actualizarAvisoFechaLimite();
@@ -1011,6 +1033,7 @@
             });
             $('#pagoFechaPago').on('change', actualizarAvisoFechaLimite);
             $('#pagoMotivoDiferencia').on('input', actualizarDiferenciaConsignado);
+            $('#pagoValorConsignado').on('input', function() { valorConsignadoAutomatico = false; });
 
             // Al diligenciar el No. de Comprobante de Egreso se da por hecho el
             // pago al propietario: pasa a CONFIRMADO y, si no tiene fecha, toma
@@ -1026,7 +1049,9 @@
 
             // GUARDAR RECIBO DE CAJA CON VALIDACIÓN DE MES/AÑO
             let guardandoPago = false;
-            $('#btnGuardarPago').on('click', async function() {
+            // registrarOtro = true ("Guardar y registrar otro"): después de guardar
+            // deja el formulario limpio y abierto para seguir con el siguiente recibo.
+            async function guardarRecibo(registrarOtro) {
                 // Evita que un doble clic (o Enter repetido) envíe el mismo recibo dos veces
                 if (guardandoPago) return;
                 let idPago = $('#editIndexPago').val();
@@ -1158,7 +1183,7 @@
                 };
 
                 guardandoPago = true;
-                $('#btnGuardarPago').prop('disabled', true);
+                $('#btnGuardarPago, #btnGuardarPagoYOtro').prop('disabled', true);
                 mostrarCargando(true, 'Guardando recibo...');
                 try {
                     let pagoGuardado;
@@ -1170,17 +1195,29 @@
                         let i = datosPagos.findIndex(p => p.id == idPago);
                         if (i !== -1) datosPagos[i] = pagoGuardado;
                     }
-                    $('#modalNuevoPago').modal('hide');
                     cargarTablaPagos();
-                    alert('¡Recibo y liquidación guardados con éxito!');
+                    if (registrarOtro) {
+                        // Conserva el período (mes/año) para seguir registrando del mismo mes
+                        let mesActual = $('#pagoMes').val(), anoActual = $('#pagoAno').val();
+                        prepararNuevoPago();
+                        $('#pagoMes').val(mesActual);
+                        $('#pagoAno').val(anoActual);
+                        alert(`¡Recibo guardado con éxito! (No. ${pagoGuardado.numeroReciboCaja || 'sin número'} · ${pagoGuardado.arrendatario})\n\nEl formulario quedó listo para registrar el siguiente.`);
+                        $('#inputBusquedaCedula').focus();
+                    } else {
+                        $('#modalNuevoPago').modal('hide');
+                        alert('¡Recibo y liquidación guardados con éxito!');
+                    }
                 } catch (err) {
                     alert('No se pudo guardar el recibo: ' + err.message);
                 } finally {
                     guardandoPago = false;
                     mostrarCargando(false);
-                    $('#btnGuardarPago').prop('disabled', false);
+                    $('#btnGuardarPago, #btnGuardarPagoYOtro').prop('disabled', false);
                 }
-            });
+            }
+            $('#btnGuardarPago').on('click', () => guardarRecibo(false));
+            $('#btnGuardarPagoYOtro').on('click', () => guardarRecibo(true));
 
             $('#btnGuardar').on('click', async function() {
                 let idContrato = $('#editIndex').val();
@@ -1231,6 +1268,15 @@
                     alert('Complete los campos obligatorios.'); return;
                 }
 
+                // Cambio de canon (incremento): se confirma, y el backend lo deja
+                // registrado en el historial de renovaciones del contrato.
+                let contratoAntes = idContrato == -1 ? null : datosBase.find(c => c.id == idContrato);
+                let canonAntes = contratoAntes ? (Number(contratoAntes.rawCanon) || 0) : 0;
+                let cambioCanon = canonAntes > 0 && Math.round(canonAntes) !== Math.round(rawValCanon);
+                if (cambioCanon && !confirm(`¿Confirma el cambio de canon del contrato #${nuevoObj.contrato}?\n\nCanon anterior: ${formatearPesos(canonAntes)}\nCanon nuevo: ${formatearPesos(rawValCanon)}\n\nEl cambio aplica a los recibos nuevos y queda registrado en el historial del contrato. Los recibos ya guardados no cambian.`)) {
+                    return;
+                }
+
                 $('#btnGuardar').prop('disabled', true);
                 mostrarCargando(true, 'Guardando contrato...');
                 try {
@@ -1242,6 +1288,9 @@
                         contratoGuardado = await apiFetch('/contratos/' + idContrato, { method: 'PUT', body: JSON.stringify(nuevoObj) });
                         let i = datosBase.findIndex(c => c.id == idContrato);
                         if (i !== -1) datosBase[i] = contratoGuardado;
+                        if (cambioCanon) {
+                            try { datosRenovaciones = await apiFetch('/renovaciones'); } catch (e) { /* el historial se verá al recargar */ }
+                        }
                     }
                     ordenarContratosPorRecencia();
                     $('#modalAdicionar').modal('hide');
@@ -1492,57 +1541,118 @@
                 }).join('');
             $('#cuerpoTablaControlCartera').html(tbody);
 
-            renderizarPendientesPropietarios();
+            renderizarPagosPropietarios();
         }
 
-        function renderizarPendientesPropietarios() {
-            let pendientes = datosPagos
-                .filter(p => (p.estadoArr || 'CONFIRMADO') === 'CONFIRMADO' && p.estadoProp === 'PENDIENTE')
-                .map(p => Object.assign({ titularMostrar: p.titularConsignar || p.propietario || 'Sin Especificar' }, p))
-                .sort((a, b) => a.titularMostrar.localeCompare(b.titularMostrar) || (a.fechaPago || '').localeCompare(b.fechaPago || ''));
+        // ---------- Pagos a Propietarios ----------
+        // Consulta de lo que se le ha PAGADO (o se le DEBE) a cada propietario.
+        // Solo cuenta recibos ya cobrados al arrendatario (estadoArr CONFIRMADO):
+        // si el arrendatario no ha pagado, todavía no hay nada que pagarle al
+        // propietario. Filtros: propietario, estado, mes y año.
+        function titularDePago(p) {
+            return p.titularConsignar || p.propietario || 'Sin Especificar';
+        }
 
-            let total = pendientes.reduce((s, p) => s + (Number(p.netoPropietario) || 0), 0);
-            let numPropietarios = new Set(pendientes.map(p => p.titularMostrar)).size;
-            $('#resumenPendientesPropietarios').html(`
-                <span class="badge badge-status-pending me-1">Recibos pendientes de egreso: ${pendientes.length}</span>
-                <span class="badge bg-light text-dark border me-2">Propietarios: ${numPropietarios}</span>
-                <span class="small fw-bold text-primary">Total por pagar a propietarios: ${formatearPesos(total)}</span>
+        function obtenerPagosPropietariosFiltrados() {
+            let texto = ($('#propBuscar').val() || '').trim().toLowerCase();
+            let estado = $('#propEstado').val();
+            let mes = $('#propMes').val();
+            let ano = ($('#propAno').val() || '').trim();
+            return datosPagos
+                .filter(p => (p.estadoArr || 'CONFIRMADO') === 'CONFIRMADO')
+                .filter(p => !estado || (p.estadoProp || 'CONFIRMADO') === estado)
+                .filter(p => !mes || p.mes === mes)
+                .filter(p => !ano || String(p.ano) === ano)
+                .filter(p => !texto || `${titularDePago(p)} ${p.propietario || ''} ${p.cedulaProp || ''} ${p.cedulaTitular || ''}`.toLowerCase().includes(texto))
+                .sort((a, b) => titularDePago(a).localeCompare(titularDePago(b))
+                    || (String(b.ano)).localeCompare(String(a.ano))
+                    || NOMBRES_MESES.indexOf(b.mes) - NOMBRES_MESES.indexOf(a.mes));
+        }
+
+        function renderizarPagosPropietarios() {
+            if (!$('#cuerpoTablaPagosPropietarios').length) return;
+
+            // Sugerencias del buscador: todos los propietarios/titulares conocidos
+            let nombres = [...new Set(datosPagos.map(titularDePago))].sort((a, b) => a.localeCompare(b));
+            $('#listaPropietariosPagos').html(nombres.map(n => `<option value="${escaparHTML(n)}"></option>`).join(''));
+
+            let lista = obtenerPagosPropietariosFiltrados();
+            let estado = $('#propEstado').val();
+            let pagados = lista.filter(p => (p.estadoProp || 'CONFIRMADO') === 'CONFIRMADO');
+            let pendientes = lista.filter(p => p.estadoProp === 'PENDIENTE');
+            let suma = arr => arr.reduce((s, p) => s + (Number(p.netoPropietario) || 0), 0);
+            $('#resumenPagosPropietarios').html(`
+                <span class="small fw-bold text-muted me-2">${lista.length} registro(s):</span>
+                ${estado !== 'PENDIENTE' ? `<span class="badge badge-status-active me-1">Pagados: ${pagados.length}</span><span class="small fw-bold text-success me-3">${formatearPesos(suma(pagados))}</span>` : ''}
+                ${estado !== 'CONFIRMADO' ? `<span class="badge badge-status-pending me-1">Pendientes: ${pendientes.length}</span><span class="small fw-bold text-danger">${formatearPesos(suma(pendientes))} por pagar</span>` : ''}
             `);
 
-            if (pendientes.length === 0) {
-                $('#cuerpoTablaPendientesProp').html(`<tr><td colspan="9" class="text-center py-4 text-muted">No hay pagos pendientes a propietarios.</td></tr>`);
+            if (lista.length === 0) {
+                $('#cuerpoTablaPagosPropietarios').html(`<tr><td colspan="10" class="text-center py-4 text-muted">No hay pagos a propietarios con estos filtros.</td></tr>`);
                 return;
             }
 
+            // Mostrar todos los registros puede ser muy largo: se limita a 300 filas
+            // (el CSV sí exporta todo lo filtrado).
+            const MAX_FILAS = 300;
             let html = '';
             let grupoActual = null, subtotal = 0, cantidad = 0;
             let cerrarGrupo = () => {
                 if (grupoActual === null) return;
-                html += `<tr class="table-light"><td colspan="7" class="text-end small fw-bold">Subtotal ${escaparHTML(grupoActual)} (${cantidad})</td><td class="fw-bold text-primary">${formatearPesos(subtotal)}</td><td></td></tr>`;
+                html += `<tr class="table-light"><td colspan="4" class="text-end small fw-bold">Total ${escaparHTML(grupoActual)} (${cantidad})</td><td class="fw-bold text-primary">${formatearPesos(subtotal)}</td><td colspan="5"></td></tr>`;
             };
-            pendientes.forEach(p => {
-                if (p.titularMostrar !== grupoActual) {
+            lista.slice(0, MAX_FILAS).forEach(p => {
+                let titular = titularDePago(p);
+                if (titular !== grupoActual) {
                     cerrarGrupo();
-                    grupoActual = p.titularMostrar; subtotal = 0; cantidad = 0;
+                    grupoActual = titular; subtotal = 0; cantidad = 0;
                 }
                 subtotal += Number(p.netoPropietario) || 0; cantidad++;
+                let pagado = (p.estadoProp || 'CONFIRMADO') === 'CONFIRMADO';
                 html += `
                     <tr>
-                        <td><strong style="color: var(--brand-navy);">${escaparHTML(p.titularMostrar)}</strong></td>
+                        <td><strong style="color: var(--brand-navy);">${escaparHTML(titular)}</strong></td>
                         <td>#${escaparHTML(p.contrato)}</td>
                         <td>${escaparHTML(p.arrendatario)}</td>
                         <td>${escaparHTML(p.mes)} / ${escaparHTML(p.ano)}</td>
-                        <td>${p.numeroReciboCaja ? escaparHTML(p.numeroReciboCaja) : '<span class="text-muted">-</span>'}</td>
-                        <td>${escaparHTML(p.fechaPago || '')}</td>
-                        <td class="small">${escaparHTML(p.bancoProp || '-')}<br>${escaparHTML(p.cuentaProp || '')}</td>
                         <td class="fw-bold text-primary">${formatearPesos(p.netoPropietario)}</td>
+                        <td><span class="badge ${pagado ? 'badge-status-active' : 'badge-status-pending'}">${pagado ? 'PAGADO' : 'PENDIENTE'}</span></td>
+                        <td>${p.fechaProp ? escaparHTML(p.fechaProp) : '<span class="text-muted">-</span>'}</td>
+                        <td>${p.numeroComprobanteEgreso ? `<strong>${escaparHTML(p.numeroComprobanteEgreso)}</strong>` : '<span class="text-muted">-</span>'}</td>
+                        <td class="small">${escaparHTML(p.formaProp || '-')}<br><span class="text-muted">${escaparHTML(p.bancoProp || '')} ${escaparHTML(p.cuentaProp || '')}</span></td>
                         <td class="text-center">
-                            <button class="btn btn-outline-primary btn-action" onclick="abrirModalEditarPago(${Number(p.id)})" title="Registrar Comprobante de Egreso"><i class="fas fa-money-check-dollar"></i></button>
+                            ${pagado
+                                ? `<button class="btn btn-outline-primary btn-action" onclick="imprimirComprobante(${Number(p.id)})" title="Imprimir comprobante del propietario"><i class="fas fa-print"></i></button>`
+                                : `<button class="btn btn-outline-success btn-action" onclick="abrirModalEditarPago(${Number(p.id)})" title="Registrar el pago (Comprobante de Egreso)"><i class="fas fa-money-check-dollar"></i></button>`}
                         </td>
                     </tr>`;
             });
             cerrarGrupo();
-            $('#cuerpoTablaPendientesProp').html(html);
+            if (lista.length > MAX_FILAS) {
+                html += `<tr><td colspan="10" class="text-center small text-muted py-3">Se muestran los primeros ${MAX_FILAS} de ${lista.length}. Filtre por propietario, mes o año, o exporte a CSV para ver todo.</td></tr>`;
+            }
+            $('#cuerpoTablaPagosPropietarios').html(html);
+        }
+
+        function exportarPagosPropietariosCSV() {
+            let lista = obtenerPagosPropietariosFiltrados();
+            if (lista.length === 0) { alert('No hay registros para exportar con estos filtros.'); return; }
+            let csv = "﻿Propietario / Titular;Cédula Titular;Contrato;Arrendatario;Mes;Año;No. Recibo de Caja;Neto Propietario;Estado;Fecha Pago Propietario;No. Comprobante de Egreso;Medio de Pago;Banco;Cuenta\n";
+            lista.forEach(p => {
+                csv += [
+                    titularDePago(p), p.cedulaTitular || p.cedulaProp || '', p.contrato, p.arrendatario, p.mes, p.ano,
+                    p.numeroReciboCaja || '', Math.round(Number(p.netoPropietario) || 0),
+                    (p.estadoProp || 'CONFIRMADO') === 'CONFIRMADO' ? 'PAGADO' : 'PENDIENTE',
+                    p.fechaProp || '', p.numeroComprobanteEgreso || '', p.formaProp || '', p.bancoProp || '', p.cuentaProp || ''
+                ].map(campo => `"${String(campo).replace(/"/g, '""')}"`).join(';') + "\n";
+            });
+            let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Pagos_a_Propietarios_BRW_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // Abre "Registrar Recibo de Caja" ya diligenciado con el contrato y el
@@ -1567,6 +1677,7 @@
             $('#pagoSucursalArr').val(c.sucursalArrendatario || '');
             $('#pagoDireccionInmueble').val(c.direccion || '');
             ponerCanonDelContratoEnRecibo(Number(c.rawCanon) || 0);
+            valorConsignadoAutomatico = true;
             calcularLiquidacionPropietario();
             intentarCargarPagoExistente();
             actualizarAvisoFechaLimite();
@@ -1881,10 +1992,7 @@
             $('#valCuentaProp').val(item.cuentaProp || '');
             $('#valDireccion').val(item.direccion || '');
             $('#valCanonNumerico').val(formatearMonedaInput(item.rawCanon || 0));
-            // Un contrato que ya tiene canon no lo cambia desde aquí: solo con
-            // "Registrar Renovación" (que deja historial). Si está en $0 sí se
-            // permite registrarlo por primera vez.
-            bloquearCanonContrato((Number(item.rawCanon) || 0) > 0);
+            mostrarAyudaCanonContrato((Number(item.rawCanon) || 0) > 0);
             $('#valDiaLimite').val(item.diaLimite || '5');
             $('#valFechaIni').val(item.fechaIni || '');
             $('#valFechaVto').val(item.fechaVto || '');
@@ -1981,6 +2089,7 @@
             $('#pagoTipoLiquidacion').val(p.tipoLiquidacion || 'mensual');
             $('#aplicar4x1000').prop('checked', (p.valor4x1000 > 0));
             ponerCanonDelContratoEnRecibo(Number(p.canon) || (contratoRelacionado ? Number(contratoRelacionado.rawCanon) || 0 : 0));
+            valorConsignadoAutomatico = false; // recibo ya guardado: se respeta lo que tenga
             $('#pagoValorConsignado').val(p.valorConsignado === null || p.valorConsignado === undefined ? '' : formatearMonedaInput(Math.round(p.valorConsignado)));
             $('#pagoMotivoDiferencia').val(p.motivoDiferencia || '');
             $('#pagoConceptoDescArr').val(p.conceptoDescArr || '');
@@ -2013,6 +2122,7 @@
             $('#pagoConceptoDescArr').val('');
             $('#pagoDescuento').val('0');
             $('#pagoValorConsignado').val('');
+            valorConsignadoAutomatico = true;
             $('#pagoMotivoDiferencia').val('');
             $('#pagoTipoLiquidacion').val('mensual');
             $('#aplicar4x1000').prop('checked', false);
@@ -2177,6 +2287,7 @@
             $('#pagoCanon').val('');
             $('#ayudaPagoCanon').removeClass('text-danger').text('Se toma del contrato.');
             $('#pagoValorConsignado').val('');
+            valorConsignadoAutomatico = true;
             $('#pagoDiferencia').val('');
             $('#pagoMotivoDiferencia').val('');
             $('#avisoFechaLimitePago').html('');
@@ -2200,9 +2311,11 @@
             $('#modalPagoTitulo').html('<i class="fas fa-receipt me-2" style="color: var(--brand-gold);"></i>Registrar Recibo de Caja y Liquidación Propietario');
         }
 
-        function bloquearCanonContrato(bloquear) {
-            $('#valCanonNumerico').prop('readonly', bloquear).toggleClass('bg-light', bloquear);
-            $('#iconoCanonBloqueado, #ayudaCanonContrato').toggleClass('d-none', !bloquear);
+        // El canon se puede modificar en el contrato (incrementos). Al editar un
+        // contrato que ya tiene canon se muestra el aviso de que el cambio queda
+        // en el historial de renovaciones.
+        function mostrarAyudaCanonContrato(mostrar) {
+            $('#ayudaCanonContrato').toggleClass('d-none', !mostrar);
         }
 
         // El canon del recibo se toma SIEMPRE del contrato (campo de solo
@@ -2210,7 +2323,7 @@
         function ponerCanonDelContratoEnRecibo(canon) {
             $('#pagoCanon').val(formatearMonedaInput(canon || 0));
             if (canon > 0) {
-                $('#ayudaPagoCanon').removeClass('text-danger').text('Se toma del contrato. Solo cambia con una Renovación.');
+                $('#ayudaPagoCanon').removeClass('text-danger').text('Se toma del contrato. Para cambiarlo, edite el canon en el contrato.');
             } else {
                 $('#ayudaPagoCanon').addClass('text-danger').text('Este contrato no tiene canon registrado: regístrelo en Gestión de Contratos.');
             }
@@ -2219,7 +2332,7 @@
         function prepararNuevoContrato() {
             $('#editIndex').val('-1');
             $('#formContrato')[0].reset();
-            bloquearCanonContrato(false);
+            mostrarAyudaCanonContrato(false);
             // Con la lista vacía (primera vez) Math.max(...[]) da -Infinity; se protege con 0
             let numerosContrato = datosBase.map(c => parseInt(c.contrato) || 0);
             let maxContrato = numerosContrato.length ? Math.max(...numerosContrato) : 0;
