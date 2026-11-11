@@ -113,7 +113,19 @@ function limpiarValorContrato(campo, valor) {
     return limpiarUno(campo, valor, CAMPOS_FECHA_CONTRATO, DEFECTOS_CONTRATO);
 }
 
+// Prefijo del No. de Recibo de Caja (mismo valor que PREFIJOS_NUMERACION
+// en app.js). Ej: "RC-1425". El número "base" (sin letras) es el que se usa
+// para detectar repetidos: "843" y "RC-843" son el mismo recibo.
+const PREFIJO_RECIBO_CAJA = 'RC-';
+
+function numeroBaseRecibo(numero) {
+    const t = String(numero || '').trim();
+    return t.toUpperCase().startsWith(PREFIJO_RECIBO_CAJA) ? t.slice(PREFIJO_RECIBO_CAJA.length).trim() : t;
+}
+
 module.exports = {
+    PREFIJO_RECIBO_CAJA,
+    numeroBaseRecibo,
     CAMPOS_CONTRATO,
     CAMPOS_PAGO,
     CAMPOS_RENOVACION,

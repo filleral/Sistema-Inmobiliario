@@ -577,9 +577,15 @@
                                 <label class="form-label">Inmueble / Dirección</label>
                                 <input type="text" class="form-control bg-light" id="pagoDireccionInmueble" readonly>
                             </div>
+                            <!-- UN SOLO NÚMERO: arma Factura (FV-2-), Recibo de Caja (RC-) y
+                                 Comprobante de Egreso (CE-, al registrar el pago al propietario) -->
+                            <div class="col-md-2">
+                                <label class="form-label fw-bold" style="color: var(--brand-navy);">Número <i class="fas fa-pen text-muted small"></i></label>
+                                <input type="text" class="form-control fw-bold border-primary" id="pagoNumeroDocumento" placeholder="Ej: 1425" inputmode="numeric" title="Digite solo el número: el sistema arma la Factura, el Recibo de Caja y el Comprobante de Egreso con sus letras">
+                            </div>
                             <div class="col-md-3">
                                 <label class="form-label">Número de Factura</label>
-                                <input type="text" class="form-control" id="pagoNumeroFactura" placeholder="Ej: FV-2-1425">
+                                <input type="text" class="form-control" id="pagoNumeroFactura" placeholder="Se arma con el número">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Fecha de Factura</label>
@@ -587,11 +593,11 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">No. Recibo de Caja</label>
-                                <input type="text" class="form-control" id="pagoNumeroReciboCaja" placeholder="Ej: 843">
+                                <input type="text" class="form-control" id="pagoNumeroReciboCaja" placeholder="Se arma con el número">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">No. Comprobante de Egreso</label>
-                                <input type="text" class="form-control" id="pagoNumeroComprobanteEgreso" placeholder="Ej: CE-1024">
+                                <input type="text" class="form-control" id="pagoNumeroComprobanteEgreso" placeholder="Se arma al pagar al propietario">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Fecha de Recibo</label>

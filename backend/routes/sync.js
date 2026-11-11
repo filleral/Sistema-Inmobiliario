@@ -22,7 +22,7 @@
 const express = require('express');
 const pool = require('../db');
 const { verificarSecretoSync } = require('../middleware/syncSecret');
-const { CAMPOS_CONTRATO, CAMPOS_PAGO, valoresContrato, valoresPago } = require('../utils/campos');
+const { CAMPOS_CONTRATO, CAMPOS_PAGO, valoresContrato, valoresPago, PREFIJO_RECIBO_CAJA, numeroBaseRecibo } = require('../utils/campos');
 
 const router = express.Router();
 
@@ -218,14 +218,23 @@ router.post('/excel', verificarSecretoSync, async (req, res) => {
             // distintos (misma regla que routes/pagos.js). Si el Excel trae un
             // número que ya tiene OTRO recibo, solo se omite ese número (el
             // resto de la fila sí se sincroniza) en vez de tumbar la corrida.
+            // El número se compara sin letras: "843" del Excel y "RC-843" de la
+            // web son el mismo recibo de caja.
             if (camposDirectos.numeroReciboCaja) {
+                const base = numeroBaseRecibo(camposDirectos.numeroReciboCaja);
+                const idExistente = existenteRes.rows[0]?.id || 0;
                 const duplicadoRes = await cliente.query(
-                    'SELECT id FROM pagos WHERE TRIM("numeroReciboCaja") = $1 AND id <> $2 LIMIT 1',
-                    [camposDirectos.numeroReciboCaja, existenteRes.rows[0]?.id || 0]
+                    `SELECT id FROM pagos WHERE (TRIM("numeroReciboCaja") = $1 OR TRIM("numeroReciboCaja") = $2) AND id <> $3 LIMIT 1`,
+                    [base, PREFIJO_RECIBO_CAJA + base, idExistente]
                 );
                 if (duplicadoRes.rows[0]) {
                     delete camposDirectos.numeroReciboCaja;
                     resumen.recibosNumeroRepetidoOmitido++;
+                } else if (idExistente) {
+                    // Mismo número que ya tiene el recibo en la web (ej. "RC-843"):
+                    // no se toca, para no devolverlo al formato sin letras.
+                    const actualRes = await cliente.query('SELECT "numeroReciboCaja" FROM pagos WHERE id = $1', [idExistente]);
+                    if (numeroBaseRecibo(actualRes.rows[0]?.numeroReciboCaja) === base) delete camposDirectos.numeroReciboCaja;
                 }
             }
 

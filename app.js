@@ -12,6 +12,17 @@
         const PREFIJO_CLAVES_APP = 'brw_';
         const CLAVE_TOKEN = 'brw_authToken';
 
+        // Numeración de documentos: en el recibo se digita UN SOLO número y el
+        // sistema arma los tres documentos con sus letras (ej. 1425 ->
+        // FV-2-1425, RC-1425 y CE-1425). Si cambian las letras, ajustar aquí.
+        // (El backend usa el mismo prefijo de recibo de caja para detectar
+        // números repetidos: backend/utils/campos.js, PREFIJO_RECIBO_CAJA.)
+        const PREFIJOS_NUMERACION = {
+            factura: 'FV-2-',
+            reciboCaja: 'RC-',
+            comprobanteEgreso: 'CE-',
+        };
+
         // Mapeo de columnas del CSV a los campos internos del sistema para la
         // importación inicial de datos (botón "Importar CSV"). La clave (izquierda)
         // es el nombre interno; el valor (derecha) es el encabezado que debe tener
@@ -717,6 +728,44 @@
         // true = el Valor Pagado al Propietario se llena solo con el neto.
         let valorPagadoPropAutomatico = false;
 
+        // Número "base" de un documento, sin sus letras (RC-1425 -> 1425,
+        // FV-2-1425 -> 1425). Sirve para mostrar el número del recibo y para
+        // que "843" y "RC-843" se reconozcan como el MISMO recibo de caja.
+        function numeroBaseDe(texto) {
+            let t = String(texto || '').trim();
+            [PREFIJOS_NUMERACION.factura, PREFIJOS_NUMERACION.reciboCaja, PREFIJOS_NUMERACION.comprobanteEgreso].forEach(pref => {
+                if (pref && t.toUpperCase().startsWith(pref.toUpperCase())) t = t.slice(pref.length);
+            });
+            return t.trim();
+        }
+
+        // Al digitar el número: arma la Factura y el Recibo de Caja. El
+        // Comprobante de Egreso solo se arma cuando el pago al propietario está
+        // CONFIRMADO (si se armara antes, se daría por pagado sin estarlo).
+        function armarNumerosDocumento() {
+            let n = String($('#pagoNumeroDocumento').val() || '').trim();
+            if (!n) return;
+            let siEditable = (sel, valor) => { if (!$(sel).prop('readonly')) $(sel).val(valor); };
+            siEditable('#pagoNumeroFactura', PREFIJOS_NUMERACION.factura + n);
+            siEditable('#pagoNumeroReciboCaja', PREFIJOS_NUMERACION.reciboCaja + n);
+            if ($('#pagoEstadoProp').val() === 'CONFIRMADO') siEditable('#pagoNumeroComprobanteEgreso', PREFIJOS_NUMERACION.comprobanteEgreso + n);
+        }
+
+        // Al marcar el pago al propietario como CONFIRMADO, arma el CE con el
+        // número del recibo (si no tiene uno) y pone la fecha de hoy. Si se
+        // devuelve a PENDIENTE, quita el CE que se había armado solo.
+        function alCambiarEstadoPropietario() {
+            let n = String($('#pagoNumeroDocumento').val() || '').trim() || numeroBaseDe($('#pagoNumeroReciboCaja').val());
+            let $ce = $('#pagoNumeroComprobanteEgreso');
+            if ($ce.prop('readonly')) return;
+            if ($('#pagoEstadoProp').val() === 'CONFIRMADO') {
+                if (!String($ce.val() || '').trim() && n) $ce.val(PREFIJOS_NUMERACION.comprobanteEgreso + n);
+                if (!$('#pagoFechaProp').val()) $('#pagoFechaProp').val(fechaISOLocal(new Date()));
+            } else if (n && String($ce.val() || '').trim() === PREFIJOS_NUMERACION.comprobanteEgreso + n) {
+                $ce.val('');
+            }
+        }
+
         function formatearPesos(n) {
             let v = Math.round(Number(n) || 0);
             return (v < 0 ? '-$ ' : '$ ') + Math.abs(v).toLocaleString('es-CO');
@@ -1062,6 +1111,8 @@
             $('#pagoMotivoDiferencia').on('input', actualizarDiferenciaConsignado);
             $('#pagoValorConsignado').on('input', function() { valorConsignadoAutomatico = false; });
             $('#pagoValorPagadoProp').on('input', function() { valorPagadoPropAutomatico = false; });
+            $('#pagoNumeroDocumento').on('input', armarNumerosDocumento);
+            $('#pagoEstadoProp').on('change', alCambiarEstadoPropietario);
             $('#pagoMotivoDiferenciaProp').on('input', actualizarDiferenciaPropietario);
 
             // Al diligenciar el No. de Comprobante de Egreso se da por hecho el
@@ -1126,7 +1177,8 @@
                 let numeroRecibo = ($('#pagoNumeroReciboCaja').val() || '').trim();
                 let numeroCambio = esNuevo || !original || (original.numeroReciboCaja || '').trim() !== numeroRecibo;
                 if (numeroRecibo && numeroCambio) {
-                    let repetido = datosPagos.find(p => p.id != idPago && (p.numeroReciboCaja || '').trim() === numeroRecibo);
+                    // "843" y "RC-843" son el mismo recibo de caja
+                    let repetido = datosPagos.find(p => p.id != idPago && (p.numeroReciboCaja || '').trim() && numeroBaseDe(p.numeroReciboCaja) === numeroBaseDe(numeroRecibo));
                     if (repetido) {
                         alert(`El Recibo de Caja No. ${numeroRecibo} ya está registrado (contrato #${repetido.contrato}, ${repetido.mes}/${repetido.ano}, ${repetido.arrendatario}).\n\nVerifique el número: no se puede grabar el mismo recibo dos veces.`);
                         return;
@@ -2128,6 +2180,7 @@
             $('#pagoDireccionInmueble').val(p.direccion || '');
             $('#pagoNumeroFactura').val(p.numeroFactura || '');
             $('#pagoNumeroReciboCaja').val(p.numeroReciboCaja || '');
+            $('#pagoNumeroDocumento').val(numeroBaseDe(p.numeroReciboCaja || p.numeroFactura || ''));
             $('#pagoNumeroComprobanteEgreso').val(p.numeroComprobanteEgreso || '');
             $('#pagoFechaFactura').val(p.fechaFactura || '');
             $('#pagoFechaPago').val(p.fechaPago || '');
@@ -2181,7 +2234,7 @@
         // cumplir). Parte del recibo de caja: bloqueada si ya está CONFIRMADO.
         // Parte del propietario: bloqueada si ya tiene Comprobante de Egreso.
         // En lo bloqueado solo se pueden COMPLETAR los datos que estén vacíos.
-        const CAMPOS_UI_RECIBO_CAJA = ['#inputBusquedaCedula', '#pagoNumeroFactura', '#pagoFechaFactura', '#pagoNumeroReciboCaja',
+        const CAMPOS_UI_RECIBO_CAJA = ['#inputBusquedaCedula', '#pagoNumeroDocumento', '#pagoNumeroFactura', '#pagoFechaFactura', '#pagoNumeroReciboCaja',
             '#pagoFechaPago', '#pagoMes', '#pagoAno', '#pagoFormaPago', '#pagoEstadoArr', '#pagoConceptoDescArr', '#pagoDescuento',
             '#pagoValorConsignado', '#pagoMotivoDiferencia'];
         const CAMPOS_UI_EGRESO = ['#pagoTitularConsignar', '#pagoCedulaTitular', '#pagoBancoProp', '#pagoCuentaProp', '#pagoTipoLiquidacion',
@@ -2226,6 +2279,7 @@
             $('#editIndexPago').val('-1');
             $('#pagoNumeroFactura').val('');
             $('#pagoNumeroReciboCaja').val('');
+            $('#pagoNumeroDocumento').val('');
             $('#pagoNumeroComprobanteEgreso').val('');
             $('#pagoFechaFactura').val('');
             $('#pagoFechaPago').val('');

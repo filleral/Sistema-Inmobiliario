@@ -4,7 +4,7 @@
 const express = require('express');
 const pool = require('../db');
 const { verificarToken } = require('../middleware/auth');
-const { CAMPOS_PAGO, valoresPago } = require('../utils/campos');
+const { CAMPOS_PAGO, valoresPago, PREFIJO_RECIBO_CAJA, numeroBaseRecibo } = require('../utils/campos');
 
 const router = express.Router();
 
@@ -22,11 +22,15 @@ function numeroONulo(v) {
 // toma un candado de transacción por número (pg_advisory_xact_lock) para
 // que dos guardados simultáneos con el mismo número no pasen ambos la
 // verificación. Devuelve el recibo que ya tiene ese número, o null.
+// El número se compara SIN sus letras: "843" (formato viejo / Excel) y
+// "RC-843" (formato nuevo) son el mismo recibo de caja.
 async function buscarReciboConNumero(cliente, numero, idExcluir) {
-    await cliente.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['recibo-caja:' + numero]);
+    const base = numeroBaseRecibo(numero);
+    await cliente.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['recibo-caja:' + base]);
     const res = await cliente.query(
-        'SELECT id, contrato, mes, ano, arrendatario FROM pagos WHERE TRIM("numeroReciboCaja") = $1 AND id <> $2 LIMIT 1',
-        [numero, idExcluir || 0]
+        `SELECT id, contrato, mes, ano, arrendatario FROM pagos
+         WHERE (TRIM("numeroReciboCaja") = $1 OR TRIM("numeroReciboCaja") = $2) AND id <> $3 LIMIT 1`,
+        [base, PREFIJO_RECIBO_CAJA + base, idExcluir || 0]
     );
     return res.rows[0] || null;
 }
@@ -213,7 +217,7 @@ router.put('/:id', verificarToken, async (req, res) => {
         // Solo se valida el número si CAMBIÓ: así se pueden seguir editando
         // recibos antiguos que ya venían con un número repetido del Excel.
         datos.numeroReciboCaja = textoLimpio(datos.numeroReciboCaja);
-        if (datos.numeroReciboCaja && datos.numeroReciboCaja !== textoLimpio(actual.numeroReciboCaja)) {
+        if (datos.numeroReciboCaja && numeroBaseRecibo(datos.numeroReciboCaja) !== numeroBaseRecibo(actual.numeroReciboCaja)) {
             const otro = await buscarReciboConNumero(cliente, datos.numeroReciboCaja, id);
             if (otro) {
                 await cliente.query('ROLLBACK');
