@@ -551,7 +551,9 @@
                         <input type="hidden" id="editIndexPago" value="-1">
                         <input type="hidden" id="pagoContratoAsociado" value="">
                         <input type="hidden" id="pagoCedulaArr" value="">
-                        
+                        <!-- Aviso: recibo ya grabado (bloqueado) o recibo ya existente en el período -->
+                        <div id="avisoReciboModal" class="alert small d-none mb-3"></div>
+
                         <div class="section-header-modal"><i class="fas fa-user-check me-1"></i> 1. Datos del Inquilino y Recibo de Caja</div>
                         <div class="row g-3 position-relative mb-4">
                             <div class="col-md-4">
@@ -754,6 +756,26 @@
                                     <option value="PENDIENTE">PENDIENTE</option>
                                     <option value="CONFIRMADO">CONFIRMADO</option>
                                 </select>
+                            </div>
+                            <!-- VALOR REALMENTE PAGADO AL PROPIETARIO (COMPROBANTE DE EGRESO) -->
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold" style="color: var(--brand-navy);">Valor Pagado al Propietario ($) <i class="fas fa-pen text-muted small"></i></label>
+                                <input type="text" class="form-control fw-bold border-primary" id="pagoValorPagadoProp" placeholder="Lo que se le consignó" oninput="formatearEntradaMoneda(this); actualizarDiferenciaPropietario();">
+                                <div class="form-text small">Si se le consignó <strong>de más o de menos</strong> que el neto, escriba el valor exacto.</div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Diferencia vs. Neto ($)</label>
+                                <input type="text" class="form-control fw-bold bg-light" id="pagoDiferenciaProp" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" id="labelMotivoDiferenciaProp">Motivo de la Diferencia (Propietario)</label>
+                                <input type="text" class="form-control" id="pagoMotivoDiferenciaProp" list="listaMotivosDiferenciaProp" placeholder="Solo si se le pagó más o menos que el neto">
+                                <datalist id="listaMotivosDiferenciaProp">
+                                    <option value="Se le consignó de más (descontar el próximo mes)"></option>
+                                    <option value="Pago parcial al propietario"></option>
+                                    <option value="Incluye saldo de mes anterior"></option>
+                                    <option value="Anticipo solicitado por el propietario"></option>
+                                </datalist>
                             </div>
                             <div class="col-md-12">
                                 <label class="form-label">Observaciones / Notas</label>

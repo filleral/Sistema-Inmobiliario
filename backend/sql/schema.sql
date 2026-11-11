@@ -97,6 +97,10 @@ CREATE TABLE IF NOT EXISTS pagos (
     "fechaProp" DATE,
     "formaProp" TEXT DEFAULT 'AV VILLAS',
     "estadoProp" TEXT DEFAULT 'CONFIRMADO',
+    -- Lo que realmente se le pagó al propietario (NULL = no registrado: se
+    -- asume el neto). Si difiere del neto, "motivoDiferenciaProp" explica.
+    "valorPagadoProp" NUMERIC(14, 2),
+    "motivoDiferenciaProp" TEXT DEFAULT '',
     observaciones TEXT DEFAULT '',
     "creadoEn" TIMESTAMPTZ DEFAULT now(),
     "actualizadoEn" TIMESTAMPTZ DEFAULT now()
@@ -115,6 +119,8 @@ CREATE INDEX IF NOT EXISTS idx_pagos_numero_recibo ON pagos ("numeroReciboCaja")
 -- existentes (el backend también las aplica solo al arrancar, ver server.js).
 ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "valorConsignado" NUMERIC(14, 2);
 ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "motivoDiferencia" TEXT DEFAULT '';
+ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "valorPagadoProp" NUMERIC(14, 2);
+ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "motivoDiferenciaProp" TEXT DEFAULT '';
 
 -- Historial de renovaciones: un registro permanente por cada vez que un
 -- contrato se renueva (antes solo se guardaba un dato suelto de "próxima

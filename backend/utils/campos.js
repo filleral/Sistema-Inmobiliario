@@ -48,12 +48,12 @@ const CAMPOS_PAGO = [
     'descuento', 'totalConsignado', 'valorConsignado', 'motivoDiferencia',
     'tipoLiquidacion', 'comision',
     'valor4x1000', 'conceptoDescProp', 'valorDescProp', 'netoPropietario',
-    'fechaProp', 'formaProp', 'estadoProp', 'observaciones',
+    'fechaProp', 'formaProp', 'estadoProp', 'valorPagadoProp', 'motivoDiferenciaProp', 'observaciones',
 ];
 
 // Campos que, si vienen vacíos, se guardan como NULL (no como ''): las
 // fechas, y "valorConsignado" (NULL = "no se registró", distinto de $0).
-const CAMPOS_FECHA_PAGO = ['fechaFactura', 'fechaPago', 'fechaProp', 'valorConsignado'];
+const CAMPOS_FECHA_PAGO = ['fechaFactura', 'fechaPago', 'fechaProp', 'valorConsignado', 'valorPagadoProp'];
 
 const DEFECTOS_PAGO = {
     cedulaArr: '', propietario: '', cedulaProp: '',
@@ -65,7 +65,7 @@ const DEFECTOS_PAGO = {
     canon: 0, conceptoDescArr: '',
     descuento: 0, totalConsignado: 0, motivoDiferencia: '', tipoLiquidacion: 'mensual', comision: 0,
     valor4x1000: 0, conceptoDescProp: '', valorDescProp: 0, netoPropietario: 0,
-    formaProp: 'AV VILLAS', estadoProp: 'CONFIRMADO', observaciones: '',
+    formaProp: 'AV VILLAS', estadoProp: 'CONFIRMADO', motivoDiferenciaProp: '', observaciones: '',
 };
 
 const CAMPOS_RENOVACION = [

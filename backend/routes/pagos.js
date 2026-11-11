@@ -47,6 +47,65 @@ function validarDiferencia(datos) {
     return null;
 }
 
+// Lo mismo para el pago al propietario: si se registró lo que realmente se
+// le pagó (comprobante de egreso) y no coincide con el neto, va el motivo.
+function validarDiferenciaPropietario(datos) {
+    const pagado = numeroONulo(datos.valorPagadoProp);
+    if (pagado === null) return null;
+    const neto = Number(datos.netoPropietario) || 0;
+    if (Math.round(pagado) !== Math.round(neto) && !textoLimpio(datos.motivoDiferenciaProp)) {
+        return 'El valor pagado al propietario es diferente al neto a consignar: indique el motivo de la diferencia.';
+    }
+    return null;
+}
+
+// Un recibo GRABADO no se modifica (para que no se pueda "grabar varias
+// veces" cambiando sus datos). Se divide en dos partes:
+//  - Recibo de caja (lo cobrado al arrendatario): queda bloqueado cuando
+//    el recibo está CONFIRMADO.
+//  - Comprobante de egreso (lo pagado al propietario): queda bloqueado
+//    cuando ya se registró el pago (CONFIRMADO con No. de comprobante).
+// En la parte bloqueada solo se pueden COMPLETAR datos que estén vacíos;
+// un dato que ya tiene valor se conserva tal cual. Observaciones siempre
+// se puede editar.
+const CAMPOS_RECIBO_CAJA = [
+    'arrendatario', 'cedulaArr', 'contrato', 'direccion',
+    'numeroFactura', 'numeroReciboCaja', 'fechaFactura', 'fechaPago', 'ano', 'mes',
+    'formaPago', 'estadoArr', 'canon', 'conceptoDescArr', 'descuento', 'totalConsignado',
+    'valorConsignado', 'motivoDiferencia',
+];
+const CAMPOS_EGRESO = [
+    'propietario', 'cedulaProp', 'titularConsignar', 'cedulaTitular', 'bancoProp', 'cuentaProp',
+    'tipoLiquidacion', 'comision', 'valor4x1000', 'conceptoDescProp', 'valorDescProp', 'netoPropietario',
+    'fechaProp', 'formaProp', 'estadoProp', 'numeroComprobanteEgreso', 'valorPagadoProp', 'motivoDiferenciaProp',
+];
+
+function estaVacio(v) {
+    return v === null || v === undefined || String(v).trim() === '';
+}
+
+function reciboCajaBloqueado(actual) {
+    return (actual.estadoArr || 'CONFIRMADO') === 'CONFIRMADO';
+}
+
+function egresoBloqueado(actual) {
+    return (actual.estadoProp || 'CONFIRMADO') === 'CONFIRMADO' && !estaVacio(actual.numeroComprobanteEgreso);
+}
+
+// Copia sobre "datos" los valores ya guardados de los campos bloqueados.
+function conservarCamposBloqueados(datos, actual) {
+    const bloqueados = [
+        ...(reciboCajaBloqueado(actual) ? CAMPOS_RECIBO_CAJA : []),
+        ...(egresoBloqueado(actual) ? CAMPOS_EGRESO : []),
+    ];
+    bloqueados.forEach((campo) => {
+        if (campo === 'canon' && !(Number(actual.canon) > 0)) return; // canon en $0: se completa (ver abajo)
+        let valor = actual[campo];
+        if (valor instanceof Date) valor = valor.toISOString().slice(0, 10); // fechas siempre AAAA-MM-DD
+        if (!estaVacio(valor)) datos[campo] = valor;
+    });
+}
+
 async function canonDelContrato(cliente, contrato) {
     const res = await cliente.query('SELECT "rawCanon" FROM contratos WHERE contrato = $1', [contrato]);
     return Number(res.rows[0]?.rawCanon) || 0;
@@ -79,7 +138,7 @@ router.post('/', verificarToken, async (req, res) => {
         const canonContrato = await canonDelContrato(cliente, datos.contrato);
         if (canonContrato > 0) datos.canon = canonContrato;
 
-        const errorDiferencia = validarDiferencia(datos);
+        const errorDiferencia = validarDiferencia(datos) || validarDiferenciaPropietario(datos);
         if (errorDiferencia) {
             await cliente.query('ROLLBACK');
             return res.status(400).json({ error: errorDiferencia });
@@ -127,25 +186,25 @@ router.put('/:id', verificarToken, async (req, res) => {
     try {
         await cliente.query('BEGIN');
 
-        const actualRes = await cliente.query('SELECT canon, "numeroReciboCaja" FROM pagos WHERE id = $1 FOR UPDATE', [id]);
+        const actualRes = await cliente.query('SELECT * FROM pagos WHERE id = $1 FOR UPDATE', [id]);
         const actual = actualRes.rows[0];
         if (!actual) {
             await cliente.query('ROLLBACK');
             return res.status(404).json({ error: 'Recibo no encontrado.' });
         }
 
-        // El canon de un recibo ya guardado no se modifica. Solo si quedó en
-        // $0 (ej. creado desde el Excel sin canon) se completa con el del
-        // contrato, o con el que venga si el contrato tampoco lo tiene.
-        const canonActual = Number(actual.canon) || 0;
-        if (canonActual > 0) {
-            datos.canon = canonActual;
-        } else {
-            const canonContrato = await canonDelContrato(cliente, datos.contrato);
+        // Canon: un recibo todavía PENDIENTE (no cobrado; ej. creado desde el
+        // Excel con un canon viejo) toma el canon ACTUAL del contrato. Uno ya
+        // CONFIRMADO conserva el canon con el que se cobró (salvo que esté en
+        // $0, que se completa con el del contrato).
+        const canonContrato = await canonDelContrato(cliente, actual.contrato);
+        if (!reciboCajaBloqueado(actual) || !(Number(actual.canon) > 0)) {
             if (canonContrato > 0) datos.canon = canonContrato;
         }
 
-        const errorDiferencia = validarDiferencia(datos);
+        conservarCamposBloqueados(datos, actual);
+
+        const errorDiferencia = validarDiferencia(datos) || validarDiferenciaPropietario(datos);
         if (errorDiferencia) {
             await cliente.query('ROLLBACK');
             return res.status(400).json({ error: errorDiferencia });
@@ -153,6 +212,7 @@ router.put('/:id', verificarToken, async (req, res) => {
 
         // Solo se valida el número si CAMBIÓ: así se pueden seguir editando
         // recibos antiguos que ya venían con un número repetido del Excel.
+        datos.numeroReciboCaja = textoLimpio(datos.numeroReciboCaja);
         if (datos.numeroReciboCaja && datos.numeroReciboCaja !== textoLimpio(actual.numeroReciboCaja)) {
             const otro = await buscarReciboConNumero(cliente, datos.numeroReciboCaja, id);
             if (otro) {

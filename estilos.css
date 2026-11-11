@@ -310,3 +310,10 @@
                 padding: 18px 16px;
             }
         }
+
+        /* Campos de un recibo ya grabado: no se pueden modificar */
+        .campo-bloqueado {
+            background-color: #f1f3f5 !important;
+            color: #495057;
+            cursor: not-allowed;
+        }

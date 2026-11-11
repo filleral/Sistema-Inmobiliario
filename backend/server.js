@@ -76,6 +76,8 @@ async function asegurarEsquema() {
     const sentencias = [
         'ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "valorConsignado" NUMERIC(14, 2)',
         'ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "motivoDiferencia" TEXT DEFAULT \'\'',
+        'ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "valorPagadoProp" NUMERIC(14, 2)',
+        'ALTER TABLE pagos ADD COLUMN IF NOT EXISTS "motivoDiferenciaProp" TEXT DEFAULT \'\'',
         'CREATE INDEX IF NOT EXISTS idx_pagos_numero_recibo ON pagos ("numeroReciboCaja")',
     ];
     for (const sql of sentencias) {
